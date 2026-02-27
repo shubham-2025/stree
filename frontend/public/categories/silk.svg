@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce4ec"/>
+      <stop offset="100%" style="stop-color:#f8bbd0"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e91e63;stop-opacity:0.15"/>
+      <stop offset="50%" style="stop-color:#ad1457;stop-opacity:0.08"/>
+      <stop offset="100%" style="stop-color:#880e4f;stop-opacity:0.2"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <!-- Silk wave pattern -->
+  <path d="M0 200 Q150 150 300 200 T600 200 L600 250 Q450 200 300 250 T0 250Z" fill="url(#fabric)"/>
+  <path d="M0 350 Q150 300 300 350 T600 350 L600 400 Q450 350 300 400 T0 400Z" fill="url(#fabric)"/>
+  <path d="M0 500 Q150 450 300 500 T600 500 L600 550 Q450 500 300 550 T0 550Z" fill="url(#fabric)"/>
+  <!-- Center icon -->
+  <circle cx="300" cy="400" r="80" fill="white" opacity="0.5"/>
+  <text x="300" y="390" text-anchor="middle" font-family="serif" font-size="48" fill="#ad1457" opacity="0.7">🧵</text>
+  <text x="300" y="430" text-anchor="middle" font-family="serif" font-size="20" fill="#880e4f" font-weight="bold">SILK</text>
+</svg>
+

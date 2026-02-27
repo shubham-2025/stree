@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e0f7fa"/>
+      <stop offset="100%" style="stop-color:#b2ebf2"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00838f;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#006064;stop-opacity:0.15"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <path d="M0 200 Q150 160 300 200 T600 200 L600 245 Q450 205 300 245 T0 245Z" fill="url(#fabric)"/>
+  <path d="M0 380 Q150 340 300 380 T600 380 L600 425 Q450 385 300 425 T0 425Z" fill="url(#fabric)"/>
+  <path d="M0 560 Q150 520 300 560 T600 560 L600 605 Q450 565 300 605 T0 605Z" fill="url(#fabric)"/>
+  <circle cx="300" cy="400" r="80" fill="white" opacity="0.5"/>
+  <text x="300" y="390" text-anchor="middle" font-family="serif" font-size="48" fill="#00838f" opacity="0.7">💎</text>
+  <text x="300" y="430" text-anchor="middle" font-family="serif" font-size="18" fill="#006064" font-weight="bold">CHANDERI</text>
+</svg>
+

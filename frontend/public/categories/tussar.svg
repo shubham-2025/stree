@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#efebe9"/>
+      <stop offset="100%" style="stop-color:#d7ccc8"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5d4037;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#3e2723;stop-opacity:0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <path d="M0 220 Q150 180 300 220 T600 220 L600 265 Q450 225 300 265 T0 265Z" fill="url(#fabric)"/>
+  <path d="M0 400 Q150 360 300 400 T600 400 L600 445 Q450 405 300 445 T0 445Z" fill="url(#fabric)"/>
+  <path d="M0 580 Q150 540 300 580 T600 580 L600 625 Q450 585 300 625 T0 625Z" fill="url(#fabric)"/>
+  <circle cx="300" cy="400" r="80" fill="white" opacity="0.5"/>
+  <text x="300" y="390" text-anchor="middle" font-family="serif" font-size="48" fill="#5d4037" opacity="0.7">🪶</text>
+  <text x="300" y="430" text-anchor="middle" font-family="serif" font-size="20" fill="#3e2723" font-weight="bold">TUSSAR</text>
+</svg>
+

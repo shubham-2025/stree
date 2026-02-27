@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3e0"/>
+      <stop offset="100%" style="stop-color:#ffe0b2"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e65100;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#bf360c;stop-opacity:0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <path d="M0 220 Q150 190 300 220 T600 220 L600 260 Q450 230 300 260 T0 260Z" fill="url(#fabric)"/>
+  <path d="M0 400 Q150 370 300 400 T600 400 L600 440 Q450 410 300 440 T0 440Z" fill="url(#fabric)"/>
+  <path d="M0 580 Q150 550 300 580 T600 580 L600 620 Q450 590 300 620 T0 620Z" fill="url(#fabric)"/>
+  <circle cx="300" cy="400" r="80" fill="white" opacity="0.5"/>
+  <text x="300" y="390" text-anchor="middle" font-family="serif" font-size="48" fill="#e65100" opacity="0.7">🌸</text>
+  <text x="300" y="430" text-anchor="middle" font-family="serif" font-size="20" fill="#bf360c" font-weight="bold">CASUAL</text>
+</svg>
+

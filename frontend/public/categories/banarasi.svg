@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff8e1"/>
+      <stop offset="100%" style="stop-color:#ffecb3"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff8f00;stop-opacity:0.12"/>
+      <stop offset="100%" style="stop-color:#e65100;stop-opacity:0.18"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <!-- Zari-inspired pattern -->
+  <rect x="50" y="100" width="500" height="2" fill="#c6a700" opacity="0.2"/>
+  <rect x="50" y="130" width="500" height="2" fill="#c6a700" opacity="0.15"/>
+  <rect x="50" y="160" width="500" height="2" fill="#c6a700" opacity="0.2"/>
+  <rect x="100" y="100" width="2" height="62" fill="#c6a700" opacity="0.15"/>
+  <rect x="200" y="100" width="2" height="62" fill="#c6a700" opacity="0.15"/>
+  <rect x="300" y="100" width="2" height="62" fill="#c6a700" opacity="0.15"/>
+  <rect x="400" y="100" width="2" height="62" fill="#c6a700" opacity="0.15"/>
+  <rect x="500" y="100" width="2" height="62" fill="#c6a700" opacity="0.15"/>
+  <path d="M0 300 Q300 250 600 300 L600 350 Q300 300 0 350Z" fill="url(#gold)"/>
+  <path d="M0 480 Q300 430 600 480 L600 530 Q300 480 0 530Z" fill="url(#gold)"/>
+  <circle cx="300" cy="400" r="80" fill="white" opacity="0.5"/>
+  <text x="300" y="390" text-anchor="middle" font-family="serif" font-size="48" fill="#b8860b" opacity="0.7">👑</text>
+  <text x="300" y="430" text-anchor="middle" font-family="serif" font-size="18" fill="#8d6e00" font-weight="bold">BANARASI</text>
+</svg>
+
