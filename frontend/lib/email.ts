@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 /** Where new-order alerts go. Override with ORDER_NOTIFICATION_EMAIL in env. */
-const DEFAULT_ORDER_EMAIL = "shubhammahapure7@gmail.com";
+const DEFAULT_ORDER_EMAIL = "shubhammahapure1010@gmail.com";
 
 function escapeHtml(s: string): string {
   return s
