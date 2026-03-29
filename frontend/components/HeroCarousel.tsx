@@ -34,8 +34,11 @@ export default function HeroCarousel({ slides }: HeroCarouselProps) {
         <div
           key={i}
           className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-            i === current ? "opacity-100 z-10" : "opacity-0 z-0"
+            i === current
+              ? "z-10 opacity-100"
+              : "z-0 opacity-0 pointer-events-none"
           }`}
+          aria-hidden={i !== current}
         >
           <img
             src={slide.image}

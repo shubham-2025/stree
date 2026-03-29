@@ -1,0 +1,13 @@
+{
+  "name": "stree",
+  "private": true,
+  "workspaces": ["frontend"],
+  "scripts": {
+    "build": "npm run build -w frontend",
+    "dev": "npm run dev -w frontend",
+    "lint": "npm run lint -w frontend"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
