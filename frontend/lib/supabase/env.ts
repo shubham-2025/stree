@@ -8,10 +8,12 @@ export function getSupabasePublicEnv(): { url: string; anonKey: string } {
     process.env.SUPABASE_URL?.trim();
   const anonKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    process.env.SUPABASE_ANON_KEY?.trim();
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    process.env.SUPABASE_PUBLISHABLE_DEFAULT_KEY?.trim();
   if (!url || !anonKey) {
     throw new Error(
-      "Supabase env missing: use Vercel → Integrations → Supabase (linked project), or set SUPABASE_URL + SUPABASE_ANON_KEY, or NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY for Production & Preview."
+      "Supabase env missing: set NEXT_PUBLIC_SUPABASE_URL plus either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (or Vercel integration SUPABASE_* equivalents)."
     );
   }
   return { url, anonKey };
