@@ -79,26 +79,31 @@ export async function createOrder(data: CheckoutData) {
     return { error: "Failed to place order. Please try again." };
   }
 
-  // Send email notification to admin (non-blocking)
-  sendOrderEmail({
-    orderId,
-    customer_name: data.customer_name.trim(),
-    phone: phoneClean,
-    address_line1: data.address_line1.trim(),
-    address_line2: data.address_line2?.trim(),
-    city: data.city.trim(),
-    state: data.state.trim(),
-    pincode: data.pincode.trim(),
-    landmark: data.landmark?.trim(),
-    items: data.items.map((i) => ({
-      title: i.title,
-      price: i.price,
-      qty: i.qty,
-      color: i.color,
-      image: i.image,
-    })),
-    total_amount: data.total_amount,
-  }).catch((err) => console.error("Email send error:", err));
+  try {
+    const emailResult = await sendOrderEmail({
+      orderId,
+      customer_name: data.customer_name.trim(),
+      phone: phoneClean,
+      address_line1: data.address_line1.trim(),
+      address_line2: data.address_line2?.trim(),
+      city: data.city.trim(),
+      state: data.state.trim(),
+      pincode: data.pincode.trim(),
+      landmark: data.landmark?.trim(),
+      items: data.items.map((i) => ({
+        title: i.title,
+        price: i.price,
+        qty: i.qty,
+        color: i.color,
+        image: i.image,
+      })),
+      total_amount: data.total_amount,
+    });
+
+    console.log("Email result:", emailResult);
+  } catch (err) {
+    console.error("Email send error:", err);
+  }
 
   return { orderId };
 }
