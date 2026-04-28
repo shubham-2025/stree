@@ -5,6 +5,7 @@ import { sendOrderEmail } from "@/lib/email";
 
 interface CheckoutData {
   customer_name: string;
+  email: string;
   phone: string;
   address_line1: string;
   address_line2?: string;
@@ -23,10 +24,16 @@ interface CheckoutData {
   total_amount: number;
 }
 
-export async function createOrder(data: CheckoutData) {
+interface CreateOrderResult {
+  error?: string;
+  orderId?: string;
+}
+
+export async function createOrder(data: CheckoutData): Promise<CreateOrderResult> {
   // Validate required fields
   if (
     !data.customer_name?.trim() ||
+    !data.email?.trim() ||
     !data.phone?.trim() ||
     !data.address_line1?.trim() ||
     !data.city?.trim() ||
@@ -38,6 +45,12 @@ export async function createOrder(data: CheckoutData) {
 
   if (!data.items || data.items.length === 0) {
     return { error: "Cart is empty." };
+  }
+
+  // Validate phone (10-digit Indian mobile)
+  const email = data.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Please enter a valid email address." };
   }
 
   // Validate phone (10-digit Indian mobile)
@@ -62,6 +75,7 @@ export async function createOrder(data: CheckoutData) {
     .insert({
       id: orderId,
       customer_name: data.customer_name.trim(),
+      customer_email: email,
       phone: phoneClean,
       address_line1: data.address_line1.trim(),
       address_line2: data.address_line2?.trim() || null,
@@ -83,6 +97,7 @@ export async function createOrder(data: CheckoutData) {
     const emailResult = await sendOrderEmail({
       orderId,
       customer_name: data.customer_name.trim(),
+      customer_email: email,
       phone: phoneClean,
       address_line1: data.address_line1.trim(),
       address_line2: data.address_line2?.trim(),

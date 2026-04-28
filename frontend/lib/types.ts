@@ -18,6 +18,7 @@ export interface Product {
 export interface Order {
   id: string;
   customer_name: string;
+  customer_email: string;
   phone: string;
   address_line1: string;
   address_line2: string | null;

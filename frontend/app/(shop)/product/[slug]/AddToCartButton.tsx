@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { useFavourites } from "@/components/FavouritesProvider";
+import { useToast } from "@/components/ToastProvider";
+import { startGlobalLoader } from "@/components/GlobalActivityLoader";
 import type { Product } from "@/lib/types";
 import { COLORS } from "@/lib/constants";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AddToCartButton({ product }: { product: Product }) {
   const { addToCart } = useCart();
   const { isFavourite, toggleFavourite } = useFavourites();
+  const { showToast } = useToast();
+  const router = useRouter();
   const [selectedColor, setSelectedColor] = useState(
     product.colors.length > 0 ? product.colors[0] : ""
   );
@@ -30,7 +35,23 @@ export default function AddToCartButton({ product }: { product: Product }) {
       slug: product.slug,
     });
     setAdded(true);
+    showToast("Added to cart", "success");
     setTimeout(() => setAdded(false), 3000);
+  };
+
+  const handleBuyNow = () => {
+    startGlobalLoader();
+    addToCart({
+      productId: product.id,
+      title: product.title,
+      price: product.price,
+      qty,
+      color: selectedColor,
+      image: product.images[0] || "/placeholder.svg",
+      slug: product.slug,
+    });
+    showToast("Proceeding to checkout", "info");
+    router.push("/checkout");
   };
 
   const outOfStock = product.stock_qty <= 0;
@@ -109,7 +130,13 @@ export default function AddToCartButton({ product }: { product: Product }) {
 
         {/* Favourite button */}
         <button
-          onClick={() => toggleFavourite(product.id)}
+          onClick={() => {
+            toggleFavourite(product.id);
+            showToast(
+              isFav ? "Removed from favourites" : "Added to favourites",
+              "info"
+            );
+          }}
           className={`w-14 rounded-xl border-2 flex items-center justify-center transition-all ${
             isFav
               ? "border-brand bg-brand-50 text-brand"
@@ -135,6 +162,15 @@ export default function AddToCartButton({ product }: { product: Product }) {
           </svg>
         </button>
       </div>
+
+      {!outOfStock && (
+        <button
+          onClick={handleBuyNow}
+          className="w-full rounded-xl border-2 border-brand py-3 text-sm font-semibold text-brand transition-all hover:bg-brand hover:text-white"
+        >
+          Buy Now
+        </button>
+      )}
 
       {/* View Cart link (shows after adding) */}
       {added && (

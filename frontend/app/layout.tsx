@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import GlobalActivityLoader from "@/components/GlobalActivityLoader";
 
 export const metadata: Metadata = {
   title: "स्त्री (Stree) — Premium Sarees",
@@ -20,7 +21,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen flex flex-col">{children}</body>
+      <body className="min-h-screen flex flex-col">
+        <GlobalActivityLoader />
+        {children}
+      </body>
     </html>
   );
 }

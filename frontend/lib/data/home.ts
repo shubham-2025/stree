@@ -48,6 +48,11 @@ export const getHomeCategoryCards = cache(
   async (): Promise<{ name: string; image: string; count: number }[]> => {
     try {
       const supabase = createPublicReadClient();
+      const { data: managedRows } = await supabase
+        .from("site_categories")
+        .select("name")
+        .order("name", { ascending: true });
+
       const { data: catRows, error: catErr } = await supabase
         .from("products")
         .select("category")
@@ -67,8 +72,9 @@ export const getHomeCategoryCards = cache(
       }
 
       const dbCategories = Array.from(counts.keys());
+      const managedCategories = (managedRows || []).map((row) => row.name);
       const allCategoryNames = Array.from(
-        new Set([...CATEGORIES, ...dbCategories])
+        new Set([...CATEGORIES, ...managedCategories, ...dbCategories])
       );
 
       const previews = await Promise.all(

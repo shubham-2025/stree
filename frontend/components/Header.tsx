@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import streeNavbarLogo from "@/assets/stree-navbar-logo.png";
 import { useCart } from "@/components/CartProvider";
 import { useFavourites } from "@/components/FavouritesProvider";
 import { useState } from "react";
@@ -21,19 +23,27 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/home" className="flex items-center gap-2 shrink-0">
-            <span className="text-2xl sm:text-3xl font-bold text-brand">
-              स्त्री
-            </span>
-            <span className="hidden sm:inline text-xs text-muted tracking-widest uppercase">
-              Stree
-            </span>
-          </Link>
+        <div className="flex items-center h-16 gap-2 sm:gap-4">
+          {/* Left: logo — flex-1 so middle nav can sit true viewport-center */}
+          <div className="flex min-w-0 flex-1 justify-start">
+            <Link
+              href="/home"
+              className="relative block h-[46px] w-[230px] shrink-0 sm:h-[54px] sm:w-[270px] md:w-[290px] group"
+              aria-label="Home — स्त्री Stree"
+            >
+              <Image
+                src={streeNavbarLogo}
+                alt=""
+                fill
+                priority
+                sizes="(max-width: 640px) 230px, (max-width: 768px) 270px, 290px"
+                className="object-contain object-left transition-transform group-hover:scale-[1.02]"
+              />
+            </Link>
+          </div>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+          {/* Desktop Nav — centered between equal flex sides */}
+          <nav className="hidden shrink-0 items-center gap-8 text-sm font-medium md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -49,8 +59,8 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Icons */}
-          <div className="flex items-center gap-3">
+          {/* Right: icons — same flex-1 as left for balance */}
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
             {/* Favourites */}
             <Link
               href="/favourites"

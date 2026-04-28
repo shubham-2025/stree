@@ -6,6 +6,11 @@ import { createOrder } from "@/app/actions/orders";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
+import {
+  startGlobalLoader,
+  stopGlobalLoader,
+} from "@/components/GlobalActivityLoader";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
@@ -19,11 +24,13 @@ const INDIAN_STATES = [
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     customer_name: "",
+    email: "",
     phone: "",
     address_line1: "",
     address_line2: "",
@@ -41,6 +48,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    startGlobalLoader();
     setError("");
     setLoading(true);
 
@@ -60,15 +68,20 @@ export default function CheckoutPage() {
 
       if (result.error) {
         setError(result.error);
+        showToast(result.error, "error");
+        stopGlobalLoader();
         setLoading(false);
         return;
       }
 
       clearCart();
-      window.location.href = `/order-success/${result.orderId}`;
+      showToast("Order placed successfully!", "success");
+      router.push(`/order-success/${result.orderId}`);
     } catch (err) {
       console.error("Checkout error:", err);
       setError("Something went wrong. Please try again.");
+      showToast("Failed to place order. Please try again.", "error");
+      stopGlobalLoader();
       setLoading(false);
     }
   };
@@ -119,6 +132,21 @@ export default function CheckoutPage() {
                 className="w-full px-4 py-2.5 border border-border rounded-lg text-sm
                            focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 placeholder="Enter your full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                name="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 border border-border rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                placeholder="you@example.com"
               />
             </div>
             <div>

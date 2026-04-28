@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import streeNavbarLogo from "@/assets/stree-navbar-logo.png";
 
 export default function Footer() {
   return (
@@ -17,13 +19,18 @@ export default function Footer() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-10">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
-            <Link href="/home" className="inline-block">
-              <h3 className="text-2xl sm:text-3xl font-bold text-brand-light mb-1">
-                स्त्री
-              </h3>
-              <p className="text-[10px] sm:text-xs text-gray-500 tracking-widest uppercase">
-                Stree
-              </p>
+            <Link
+              href="/home"
+              className="relative inline-block h-11 w-[200px] shrink-0 sm:h-12 sm:w-[230px] md:w-[250px]"
+              aria-label="Home — स्त्री Stree"
+            >
+              <Image
+                src={streeNavbarLogo}
+                alt="स्त्री — Stree, Sarees & Ethnic Wear"
+                fill
+                className="object-contain object-left"
+                sizes="(max-width: 640px) 200px, (max-width: 1024px) 230px, 250px"
+              />
             </Link>
             <p className="text-gray-400 text-xs sm:text-sm leading-relaxed mt-3 sm:mt-4 max-w-xs">
               Premium sarees celebrating Indian tradition and elegance.
@@ -118,17 +125,23 @@ export default function Footer() {
             <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-400">
               <li className="flex items-center gap-2 sm:gap-3">
                 <span className="text-sm sm:text-lg">📧</span>
-                <span className="break-all">shubhammahapure1010@gmail.com</span>
+                <a
+                  href="mailto:info@streesarees.com"
+                  className="break-all text-gray-400 transition-colors hover:text-brand-light"
+                >
+                  info@streesarees.com
+                </a>
               </li>
               <li className="flex items-center gap-2 sm:gap-3">
                 <span className="text-sm sm:text-lg">📍</span>
-                <span>Maharashtra, India</span>
+                <span>Uttar Pradesh, India</span>
               </li>
               <li className="flex items-center gap-2 sm:gap-3">
                 <span className="text-sm sm:text-lg">💵</span>
                 <span>Cash on Delivery Only</span>
               </li>
             </ul>
+
           </div>
         </div>
 

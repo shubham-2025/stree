@@ -29,7 +29,7 @@ export default function HeroCarousel({ slides }: HeroCarouselProps) {
   if (slides.length === 0) return null;
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl">
       {slides.map((slide, i) => (
         <div
           key={i}
@@ -42,8 +42,16 @@ export default function HeroCarousel({ slides }: HeroCarouselProps) {
         >
           <img
             src={slide.image}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-10 brightness-125 saturate-110"
+          />
+          <div className="absolute inset-0 bg-[#fce8e4]/65" aria-hidden />
+          <img
+            src={slide.image}
             alt={slide.title}
-            className="w-full h-full object-cover rounded-2xl"
+            className="relative z-10 h-full w-full object-contain"
+            loading={i === 0 ? "eager" : "lazy"}
           />
         </div>
       ))}

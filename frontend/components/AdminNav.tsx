@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
+import streeNavbarLogo from "@/assets/stree-navbar-logo.png";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/categories", label: "Categories" },
 ];
 
 export default function AdminNav() {
@@ -38,10 +41,16 @@ export default function AdminNav() {
             <div className="flex items-center gap-4 sm:gap-6">
               <Link
                 href="/admin/dashboard"
-                className="text-lg font-bold text-brand-light shrink-0"
+                className="relative inline-block h-9 w-[150px] shrink-0"
+                aria-label="Stree Admin"
               >
-                स्त्री{" "}
-                <span className="text-xs font-normal text-gray-400">Admin</span>
+                <Image
+                  src={streeNavbarLogo}
+                  alt="Stree Admin"
+                  fill
+                  className="object-contain object-left"
+                  sizes="150px"
+                />
               </Link>
               {/* Desktop nav */}
               <div className="hidden sm:flex items-center gap-1">

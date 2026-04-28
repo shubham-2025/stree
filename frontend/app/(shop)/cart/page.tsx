@@ -1,11 +1,13 @@
 "use client";
 
 import { useCart } from "@/components/CartProvider";
+import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
 
 export default function CartPage() {
   const { items, removeFromCart, updateQty, total } = useCart();
+  const { showToast } = useToast();
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -71,9 +73,10 @@ export default function CartPage() {
                     <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
                       <div className="flex items-center border border-border rounded-lg">
                         <button
-                          onClick={() =>
-                            updateQty(item.productId, item.color, item.qty - 1)
-                          }
+                          onClick={() => {
+                            updateQty(item.productId, item.color, item.qty - 1);
+                            showToast("Quantity updated", "info");
+                          }}
                           disabled={item.qty <= 1}
                           className="px-2 py-0.5 sm:px-2.5 sm:py-1 hover:bg-surface-alt transition-colors text-sm
                                      disabled:opacity-30"
@@ -84,16 +87,20 @@ export default function CartPage() {
                           {item.qty}
                         </span>
                         <button
-                          onClick={() =>
-                            updateQty(item.productId, item.color, item.qty + 1)
-                          }
+                          onClick={() => {
+                            updateQty(item.productId, item.color, item.qty + 1);
+                            showToast("Quantity updated", "info");
+                          }}
                           className="px-2 py-0.5 sm:px-2.5 sm:py-1 hover:bg-surface-alt transition-colors text-sm"
                         >
                           +
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.productId, item.color)}
+                        onClick={() => {
+                          removeFromCart(item.productId, item.color);
+                          showToast("Item removed from cart", "warning");
+                        }}
                         className="text-[10px] sm:text-xs text-red-500 hover:text-red-700 font-medium"
                       >
                         Remove
