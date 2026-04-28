@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import GlobalActivityLoader from "@/components/GlobalActivityLoader";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "स्त्री (Stree) — Premium Sarees",
@@ -22,7 +23,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col">
-        <GlobalActivityLoader />
+        <Suspense fallback={null}>
+          <GlobalActivityLoader />
+        </Suspense>
         {children}
       </body>
     </html>
