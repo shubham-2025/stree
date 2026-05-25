@@ -11,7 +11,7 @@
   --color-foreground: #111827;
   --color-muted: #6b7280;
   --color-border: #e5e7eb;
-  --font-sans: "Mukta", sans-serif;
+  --font-sans: var(--font-mukta), sans-serif;
 }
 
 body {

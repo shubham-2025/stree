@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/utils";
 import { createOrder } from "@/app/actions/orders";
@@ -299,11 +300,13 @@ export default function CheckoutPage() {
                   key={`${item.productId}-${item.color}`}
                   className="flex gap-3"
                 >
-                  <div className="w-12 h-14 rounded-lg overflow-hidden bg-white shrink-0">
-                    <img
+                  <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-white shrink-0">
+                    <Image
                       src={item.image}
                       alt={item.title}
+                      fill
                       className="w-full h-full object-cover"
+                      sizes="48px"
                     />
                   </div>
                   <div className="flex-1 min-w-0">

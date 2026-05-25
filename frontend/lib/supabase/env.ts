@@ -18,3 +18,20 @@ export function getSupabasePublicEnv(): { url: string; anonKey: string } {
   }
   return { url, anonKey };
 }
+
+/**
+ * Returns the server-only Supabase service role key required for privileged auth flows.
+ */
+export function getSupabaseServiceRoleEnv(): { serviceRoleKey: string } {
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE?.trim();
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "Supabase service-role env missing: set SUPABASE_SERVICE_ROLE_KEY for instant account creation flows."
+    );
+  }
+
+  return { serviceRoleKey };
+}

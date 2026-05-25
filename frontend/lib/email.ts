@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-const WEBSITE_FROM = '"Stree Sarees Website" <info.streesarees@gmail.com>';
+const DEFAULT_FROM = '"Stree Sarees Website" <info.streesarees@gmail.com>';
 
 function escapeHtml(s: string): string {
   return s
@@ -45,7 +45,8 @@ interface ContactEmailData {
 
 export async function sendOrderEmail(data: OrderEmailData) {
   const transporter = createGmailTransport();
-  const mailTo = getRequiredEnv("MAIL_TO");
+  const mailTo = getRequiredEnv("MAIL_TO", ["ORDER_NOTIFICATION_EMAIL"]);
+  const fromAddress = getOptionalEnv(["SMTP_FROM"]) || DEFAULT_FROM;
   const placedAt = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     dateStyle: "medium",
@@ -191,7 +192,7 @@ export async function sendOrderEmail(data: OrderEmailData) {
 
   try {
     const adminInfo = await transporter.sendMail({
-      from: WEBSITE_FROM,
+      from: fromAddress,
       to: mailTo,
       subject,
       html,
@@ -260,7 +261,7 @@ export async function sendOrderEmail(data: OrderEmailData) {
     `;
 
     const customerInfo = await transporter.sendMail({
-      from: WEBSITE_FROM,
+      from: fromAddress,
       to: data.customer_email,
       subject: customerSubject,
       text: customerText,
@@ -283,22 +284,30 @@ export async function sendOrderEmail(data: OrderEmailData) {
   }
 }
 
-function getRequiredEnv(name: "SMTP_USER" | "SMTP_PASS" | "MAIL_TO"): string {
-  const value = process.env[name]?.trim();
+function getRequiredEnv(primary: string, aliases: string[] = []): string {
+  const value = getOptionalEnv([primary, ...aliases]);
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    const keys = [primary, ...aliases].join(" or ");
+    throw new Error(`Missing required environment variable: ${keys}`);
   }
   return value;
 }
 
 function createGmailTransport() {
-  const smtpUser = getRequiredEnv("SMTP_USER");
-  const smtpPass = getRequiredEnv("SMTP_PASS");
+  const smtpHost = getOptionalEnv(["SMTP_HOST", "BREVO_SMTP_HOST"]) || "smtp.gmail.com";
+  const smtpPort = Number(
+    getOptionalEnv(["SMTP_PORT", "BREVO_SMTP_PORT"]) || (smtpHost === "smtp.gmail.com" ? "465" : "587")
+  );
+  const smtpUser = getRequiredEnv("SMTP_USER", ["BREVO_SMTP_USER"]);
+  const smtpPass = getRequiredEnv("SMTP_PASS", ["BREVO_SMTP_PASSWORD"]);
+  const secure =
+    getOptionalEnv(["SMTP_SECURE"])?.toLowerCase() === "true" ||
+    (!getOptionalEnv(["SMTP_SECURE"]) && smtpPort === 465);
 
   return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    host: smtpHost,
+    port: smtpPort,
+    secure,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -308,7 +317,8 @@ function createGmailTransport() {
 
 export async function sendContactEmail(data: ContactEmailData) {
   const transporter = createGmailTransport();
-  const mailTo = getRequiredEnv("MAIL_TO");
+  const mailTo = getRequiredEnv("MAIL_TO", ["ORDER_NOTIFICATION_EMAIL"]);
+  const fromAddress = getOptionalEnv(["SMTP_FROM"]) || DEFAULT_FROM;
 
   const subject = `New website enquiry from ${data.name}`;
   const text = [
@@ -334,11 +344,19 @@ export async function sendContactEmail(data: ContactEmailData) {
   `;
 
   return transporter.sendMail({
-    from: WEBSITE_FROM,
+    from: fromAddress,
     to: mailTo,
     replyTo: data.email,
     subject,
     text,
     html,
   });
+}
+
+function getOptionalEnv(names: string[]): string | null {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return null;
 }

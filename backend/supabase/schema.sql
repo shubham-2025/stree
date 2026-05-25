@@ -1,6 +1,7 @@
 -- ================================================
--- स्त्री (Stree) — Supabase Database Schema
--- Run this entire file in the Supabase SQL Editor
+-- Stree (legacy schema snapshot)
+-- Preferred source of truth: root /supabase/migrations/*.sql
+-- Run those migrations in order for the latest web + mobile backend behavior.
 -- ================================================
 
 -- =====================

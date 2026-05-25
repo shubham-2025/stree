@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 interface ImageGalleryProps {
@@ -16,10 +17,12 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     <div className="flex flex-col gap-4">
       {/* Main image */}
       <div className="relative aspect-[3/4] bg-surface-alt rounded-xl overflow-hidden border border-border">
-        <img
+        <Image
           src={displayImages[activeIndex]}
           alt={`${title} - Image ${activeIndex + 1}`}
+          fill
           className="w-full h-full object-cover"
+          sizes="(min-width: 1024px) 50vw, 100vw"
         />
       </div>
 
@@ -30,17 +33,19 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             <button
               key={i}
               onClick={() => setActiveIndex(i)}
-              className={`w-16 h-20 sm:w-20 sm:h-24 rounded-lg overflow-hidden border-2 shrink-0
+              className={`relative w-16 h-20 sm:w-20 sm:h-24 rounded-lg overflow-hidden border-2 shrink-0
                          transition-all ${
                            i === activeIndex
                              ? "border-brand ring-2 ring-brand/20"
                              : "border-border hover:border-muted"
                          }`}
             >
-              <img
+              <Image
                 src={img}
                 alt={`Thumbnail ${i + 1}`}
+                fill
                 className="w-full h-full object-cover"
+                sizes="80px"
               />
             </button>
           ))}

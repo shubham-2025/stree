@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCart } from "@/components/CartProvider";
 import { useToast } from "@/components/ToastProvider";
 import { formatPrice } from "@/lib/utils";
@@ -37,12 +38,14 @@ export default function CartClient() {
                   {/* Image */}
                   <Link
                     href={`/product/${item.slug}`}
-                    className="w-16 h-20 sm:w-24 sm:h-32 rounded-lg overflow-hidden shrink-0 bg-surface-alt"
+                    className="relative w-16 h-20 sm:w-24 sm:h-32 rounded-lg overflow-hidden shrink-0 bg-surface-alt"
                   >
-                    <img
+                    <Image
                       src={item.image}
                       alt={item.title}
+                      fill
                       className="w-full h-full object-cover"
+                      sizes="(min-width: 640px) 96px, 64px"
                     />
                   </Link>
 

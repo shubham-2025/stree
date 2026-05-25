@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -600,10 +601,19 @@ export default function ProductForm({ product }: ProductFormProps) {
           <div className="flex flex-wrap gap-3 mb-3">
             {images.map((url, i) => (
               <div key={`${url}-${i}`} className="relative group">
-                <img src={url} alt={`Product image ${i + 1}`}
-                  className={`w-24 h-28 object-cover rounded-lg border-2 ${
+                <div
+                  className={`relative w-24 h-28 overflow-hidden rounded-lg border-2 ${
                     i === 0 ? "border-brand" : "border-border"
-                  }`} />
+                  }`}
+                >
+                  <Image
+                    src={url}
+                    alt={`Product image ${i + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                </div>
                 {i === 0 && (
                   <span className="absolute bottom-1 left-1 bg-brand text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
                     Main

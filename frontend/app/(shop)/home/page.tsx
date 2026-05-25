@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import HomeCarouselCell from "./HomeCarouselCell";
@@ -121,11 +122,12 @@ export default function HomePage() {
               </div>
 
               <div className="relative mx-auto aspect-[4/5] max-w-xs overflow-hidden rounded-xl shadow-2xl sm:max-w-md sm:rounded-2xl">
-                <img
+                <Image
                   src="/Bridesmaid outfits.jpg"
                   alt="Our Story — स्त्री"
+                  fill
                   className="h-full w-full object-cover"
-                  loading="lazy"
+                  sizes="(min-width: 1024px) 33vw, 100vw"
                 />
               </div>
             </div>

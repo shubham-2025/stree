@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "version": ">= 19.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "channel": "development",
+      "distribution": "internal",
+      "node": "20.9.0"
+    },
+    "preview": {
+      "channel": "preview",
+      "distribution": "internal",
+      "node": "20.9.0"
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "node": "20.9.0"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

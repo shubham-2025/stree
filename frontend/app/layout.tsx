@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
+import { Mukta } from "next/font/google";
 import "./globals.css";
 import GlobalActivityLoader from "@/components/GlobalActivityLoader";
 import { Suspense } from "react";
+
+const mukta = Mukta({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mukta",
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "स्त्री (Stree) — Premium Sarees",
@@ -16,13 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="mr">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Mukta:wght@200;300;400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-screen flex flex-col">
+      <body className={`${mukta.variable} min-h-screen flex flex-col`}>
         <Suspense fallback={null}>
           <GlobalActivityLoader />
         </Suspense>

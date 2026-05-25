@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import HomeWhyChooseUs from "@/components/home/HomeWhyChooseUs";
 import ProductCard from "@/components/ProductCard";
@@ -83,12 +84,13 @@ export default async function HomeCatalogSections() {
                                hover:-translate-y-1 hover:shadow-xl sm:rounded-2xl sm:p-3"
                   >
                     <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-gray-50 sm:rounded-xl">
-                      <img
+                      <Image
                         src={cat.image}
                         alt={cat.name}
+                        fill
                         className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105
                           ${cat.count === 0 ? "opacity-60 grayscale-[30%]" : ""}`}
-                        loading="lazy"
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                       />
                       {cat.count === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/10">

@@ -3,9 +3,8 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useState,
   useCallback,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -21,6 +20,7 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(
 );
 
 const FAV_KEY = "stree_favourites";
+const favouritesListeners = new Set<() => void>();
 
 function loadFavs(): string[] {
   if (typeof window === "undefined") return [];
@@ -33,27 +33,37 @@ function loadFavs(): string[] {
 }
 
 function saveFavs(ids: string[]) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(FAV_KEY, JSON.stringify(ids));
+  favouritesListeners.forEach((listener) => listener());
+}
+
+function subscribe(listener: () => void) {
+  favouritesListeners.add(listener);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === FAV_KEY) {
+      listener();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    favouritesListeners.delete(listener);
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 export function FavouritesProvider({ children }: { children: ReactNode }) {
-  const [favourites, setFavourites] = useState<string[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setFavourites(loadFavs());
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (loaded) saveFavs(favourites);
-  }, [favourites, loaded]);
+  const favourites = useSyncExternalStore(subscribe, loadFavs, () => []);
 
   const toggleFavourite = useCallback((productId: string) => {
-    setFavourites((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
+    const currentFavourites = loadFavs();
+    saveFavs(
+      currentFavourites.includes(productId)
+        ? currentFavourites.filter((id) => id !== productId)
+        : [...currentFavourites, productId]
     );
   }, []);
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Order } from "@/lib/types";
+import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
 import OrderStatusUpdater from "./OrderStatusUpdater";
@@ -72,11 +73,15 @@ export default async function OrderDetailPage({
                   className="flex items-center gap-3 sm:gap-4 py-2 border-b border-border last:border-0"
                 >
                   {item.image && (
-                    <img
-                      src={item.image}
-                      alt=""
-                      className="w-10 h-12 sm:w-12 sm:h-14 object-cover rounded border border-border shrink-0"
-                    />
+                    <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded border border-border sm:h-14 sm:w-12">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 640px) 48px, 40px"
+                      />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs sm:text-sm font-medium text-foreground line-clamp-1">

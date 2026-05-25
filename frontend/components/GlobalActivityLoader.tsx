@@ -35,7 +35,14 @@ export default function GlobalActivityLoader() {
       window.clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
-    setVisible(false);
+
+    const routeHideTimer = window.setTimeout(() => {
+      setVisible(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(routeHideTimer);
+    };
   }, [pathname, searchParams]);
 
   useEffect(() => {

@@ -1,115 +1,77 @@
-# स्त्री (Stree) — Backend (Supabase Setup)
+# Stree Backend Setup
 
-This folder contains the database schema, RLS policies, and setup instructions for the Supabase backend.
+This project uses Supabase for products, orders, auth, admin profiles, and storage.
 
----
+## Recommended Setup Path
 
-## Step-by-Step Setup
+Use the SQL files in the root [`supabase/migrations`](../supabase/migrations) folder as the source of truth.
 
-### 1. Create a Supabase Project
+Run them in this order:
 
-1. Go to [https://supabase.com](https://supabase.com) and sign in.
-2. Click **New Project**.
-3. Choose an organization, give it a name (e.g., `stree`), set a database password, and select a region.
-4. Wait for the project to be provisioned.
+1. `20260329120000_stree_schema.sql`
+2. `20260329120001_seed_and_backfill.sql` (optional demo data)
+3. `20260428102000_orders_email_and_site_categories.sql`
+4. `20260525193000_mobile_user_orders.sql`
 
-### 2. Get Your API Keys
+## Supabase Project
 
-1. Go to **Project Settings → API**.
-2. Copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Paste these into `/frontend/.env.local`.
+1. Create a new Supabase project.
+2. Copy the project URL and anon key.
+3. Put them in `frontend/.env.local` and `mobile/.env`.
+4. Copy the service role key into `frontend/.env.local` as `SUPABASE_SERVICE_ROLE_KEY`.
 
-### 3. Run the Database Schema
+The service role key is required for:
 
-1. Go to **SQL Editor** in the Supabase Dashboard.
-2. Click **New Query**.
-3. Copy-paste the entire contents of `supabase/schema.sql`.
-4. Click **Run**.
-5. Verify tables `products`, `orders`, `profiles` are created in the **Table Editor**.
+- instant confirmed mobile signup
+- server-side mobile profile sync
 
-### 4. Create the Storage Bucket
+## Database Objects You Should Have
 
-1. Go to **Storage** in the Supabase Dashboard.
-2. Click **New Bucket**.
-3. Name: `product-images`
-4. Toggle **Public bucket** to ON (so images are publicly readable).
-5. Click **Create Bucket**.
+After running the migrations, verify these tables exist:
 
-### 5. Set Storage Policies
+- `products`
+- `orders`
+- `profiles`
+- `site_categories`
 
-Go to **Storage → product-images → Policies** and add these policies:
+Important order columns:
 
-#### a) Public Read (SELECT)
-
-- **Policy name**: `Public can read product images`
-- **Allowed operation**: SELECT
-- **Target roles**: (leave default / anon, authenticated)
-- **Policy definition**: `true`
-
-#### b) Admin Upload (INSERT)
-
-- **Policy name**: `Admin can upload images`
-- **Allowed operation**: INSERT
-- **Target roles**: authenticated
-- **Policy definition**:
-  ```sql
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = auth.uid()
-      AND profiles.is_admin = true
-  )
-  ```
-
-#### c) Admin Update (UPDATE)
-
-- **Policy name**: `Admin can update images`
-- **Allowed operation**: UPDATE
-- **Target roles**: authenticated
-- **Policy definition**: Same as INSERT above.
-
-#### d) Admin Delete (DELETE)
-
-- **Policy name**: `Admin can delete images`
-- **Allowed operation**: DELETE
-- **Target roles**: authenticated
-- **Policy definition**: Same as INSERT above.
-
-### 6. Create Your Admin User
-
-1. Go to **Authentication → Users**.
-2. Click **Add User → Create new user**.
-3. Enter your email and password.
-4. After the user is created, note the user's UUID.
-5. Go to **Table Editor → profiles**.
-6. Find the row with that UUID.
-7. Set `is_admin` to `true`.
-8. Save.
-
-Now you can log into the admin panel at `/admin/login` with that email/password.
-
----
-
-## Database Schema Overview
-
-| Table      | Purpose                                       |
-| ---------- | --------------------------------------------- |
-| `products` | Product catalog (sarees)                      |
-| `orders`   | Customer orders (COD checkout)                |
-| `profiles` | User profiles with admin flag                 |
+- `customer_email`
+- `user_id`
 
 ## RLS Summary
 
-| Table      | Public                         | Admin                     |
-| ---------- | ------------------------------ | ------------------------- |
-| `products` | SELECT (active only)           | ALL (CRUD)                |
-| `orders`   | INSERT only                    | SELECT, UPDATE            |
-| `profiles` | SELECT own row                 | SELECT all                |
+- `products`
+  - Public can read active products
+  - Admin can create, update, and delete
+- `orders`
+  - Guests can insert guest orders
+  - Signed-in users can insert orders linked to their own `user_id`
+  - Signed-in users can read their own orders
+  - Admin can read and update all orders
+- `profiles`
+  - Users can read their own profile row
+  - Admin can read all profiles
 
----
+## Storage
 
-## Files
+Create a public bucket named `product-images`.
 
-- `supabase/schema.sql` — Complete SQL schema with tables, triggers, RLS policies, and indexes.
+Required storage behavior:
 
+- Public read access for product images
+- Admin-only upload, update, and delete
+
+Those policies are already defined in the schema and migration SQL.
+
+## Admin User
+
+1. Create a user in Supabase Authentication.
+2. Open the `profiles` table.
+3. Set `is_admin = true` for that user.
+4. Sign in at `/admin/login`.
+
+## Notes
+
+- `backend/supabase/schema.sql` is a legacy snapshot kept for reference.
+- The root `supabase/migrations` directory is the canonical backend definition.

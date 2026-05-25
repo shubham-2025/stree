@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Product } from "@/lib/types";
+import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import DeleteProductButton from "./DeleteProductButton";
@@ -44,11 +45,15 @@ export default async function AdminProductsPage() {
               <div key={p.id} className="bg-white rounded-xl border border-border p-3">
                 <div className="flex gap-3">
                   {p.images[0] && (
-                    <img
-                      src={p.images[0]}
-                      alt=""
-                      className="w-16 h-20 object-cover rounded-lg border border-border shrink-0"
-                    />
+                    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-border">
+                      <Image
+                        src={p.images[0]}
+                        alt={p.title}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-sm line-clamp-1">
@@ -120,11 +125,15 @@ export default async function AdminProductsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {p.images[0] && (
-                            <img
-                              src={p.images[0]}
-                              alt=""
-                              className="w-10 h-12 object-cover rounded border border-border"
-                            />
+                            <div className="relative h-12 w-10 overflow-hidden rounded border border-border">
+                              <Image
+                                src={p.images[0]}
+                                alt={p.title}
+                                fill
+                                className="object-cover"
+                                sizes="40px"
+                              />
+                            </div>
                           )}
                           <div>
                             <p className="font-medium text-foreground line-clamp-1">

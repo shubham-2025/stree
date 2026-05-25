@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatPrice, getDiscountPercent } from "@/lib/utils";
@@ -18,11 +19,12 @@ export default function ProductCard({ product }: { product: Product }) {
         href={`/product/${product.slug}`}
         className="relative aspect-[3/4] overflow-hidden bg-surface-alt block"
       >
-        <img
+        <Image
           src={image}
           alt={product.title}
+          fill
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 50vw"
         />
         {discount > 0 && (
           <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-brand text-white text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg">

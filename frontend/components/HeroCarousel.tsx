@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 
 interface Slide {
@@ -40,18 +41,22 @@ export default function HeroCarousel({ slides }: HeroCarouselProps) {
           }`}
           aria-hidden={i !== current}
         >
-          <img
+          <Image
             src={slide.image}
             alt=""
             aria-hidden
+            fill
             className="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-10 brightness-125 saturate-110"
+            sizes="(min-width: 1024px) 50vw, 100vw"
           />
           <div className="absolute inset-0 bg-[#fce8e4]/65" aria-hidden />
-          <img
+          <Image
             src={slide.image}
             alt={slide.title}
+            fill
             className="relative z-10 h-full w-full object-contain"
-            loading={i === 0 ? "eager" : "lazy"}
+            priority={i === 0}
+            sizes="(min-width: 1024px) 50vw, 100vw"
           />
         </div>
       ))}
