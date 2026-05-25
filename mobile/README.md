@@ -31,7 +31,7 @@ Notes:
 
 - For local device testing, use your machine's LAN IP, not `localhost`.
 - For deployed testing, point `EXPO_PUBLIC_API_URL` to your Vercel domain `/api`.
-- The backend also needs `SUPABASE_SERVICE_ROLE_KEY` on the web side for instant signup and profile sync routes.
+- The backend only needs `SUPABASE_SERVICE_ROLE_KEY` on the web side if you want instant confirmed signup without email verification.
 
 ## Run
 

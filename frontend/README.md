@@ -143,7 +143,7 @@ git push -u origin main
 6. Add **Environment Variables**:
    - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
-   - `SUPABASE_SERVICE_ROLE_KEY` = required for instant mobile signup and server-side mobile profile sync
+   - `SUPABASE_SERVICE_ROLE_KEY` = required if you want instant confirmed mobile signup without email verification
 7. Click **Deploy**.
 
 ### 3. Update Supabase Auth Settings
@@ -170,6 +170,6 @@ After deployment, add your Vercel domain to Supabase:
 ## Notes
 
 - **No payment gateway** — only Cash on Delivery.
-- **Instant mobile signup + profile sync** use server-side routes and require `SUPABASE_SERVICE_ROLE_KEY`.
+- **Instant mobile signup** can use a server-side confirmed-user path when `SUPABASE_SERVICE_ROLE_KEY` is set.
 - **Dynamic rendering** — shop and product pages use `force-dynamic` to always show latest data.
 - **Cart** is stored in browser localStorage (no server-side cart).

@@ -23,7 +23,6 @@ Run them in this order:
 The service role key is required for:
 
 - instant confirmed mobile signup
-- server-side mobile profile sync
 
 ## Database Objects You Should Have
 
