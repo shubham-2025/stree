@@ -577,8 +577,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
 
         if (!session.access_token || !session.user) {
           const message =
-            serverRegistrationMessage ??
-            'Registration succeeded, but your account requires email verification before signing in.';
+            session.user
+              ? 'Registration succeeded, but your account requires email verification before signing in.'
+              : serverRegistrationMessage ??
+                'Registration succeeded, but your account requires email verification before signing in.';
           setError(message);
           throw createAuthError(message);
         }
