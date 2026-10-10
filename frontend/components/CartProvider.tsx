@@ -21,16 +21,23 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_KEY = "stree_cart";
+const EMPTY_CART: CartItem[] = [];
 const cartListeners = new Set<() => void>();
 
 function loadCart(): CartItem[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_CART;
   try {
     const raw = localStorage.getItem(CART_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return EMPTY_CART;
+    const parsed = JSON.parse(raw) as CartItem[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY_CART;
   } catch {
-    return [];
+    return EMPTY_CART;
   }
+}
+
+function getServerCartSnapshot(): CartItem[] {
+  return EMPTY_CART;
 }
 
 function saveCart(items: CartItem[]) {
@@ -57,7 +64,7 @@ function subscribe(listener: () => void) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const items = useSyncExternalStore(subscribe, loadCart, () => []);
+  const items = useSyncExternalStore(subscribe, loadCart, getServerCartSnapshot);
 
   const addToCart = useCallback((item: CartItem) => {
     const currentItems = loadCart();

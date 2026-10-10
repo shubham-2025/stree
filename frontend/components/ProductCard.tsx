@@ -31,7 +31,7 @@ export default function ProductCard({ product }: { product: Product }) {
             {discount}% OFF
           </span>
         )}
-        {product.images.length > 1 && (
+        {(product.images?.length ?? 0) > 1 && (
           <span className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-black/50 text-white text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md sm:rounded-lg backdrop-blur-sm">
             {product.images.length} photos
           </span>

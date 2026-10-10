@@ -20,16 +20,23 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(
 );
 
 const FAV_KEY = "stree_favourites";
+const EMPTY_FAVS: string[] = [];
 const favouritesListeners = new Set<() => void>();
 
 function loadFavs(): string[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_FAVS;
   try {
     const raw = localStorage.getItem(FAV_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return EMPTY_FAVS;
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY_FAVS;
   } catch {
-    return [];
+    return EMPTY_FAVS;
   }
+}
+
+function getServerFavsSnapshot(): string[] {
+  return EMPTY_FAVS;
 }
 
 function saveFavs(ids: string[]) {
@@ -56,7 +63,11 @@ function subscribe(listener: () => void) {
 }
 
 export function FavouritesProvider({ children }: { children: ReactNode }) {
-  const favourites = useSyncExternalStore(subscribe, loadFavs, () => []);
+  const favourites = useSyncExternalStore(
+    subscribe,
+    loadFavs,
+    getServerFavsSnapshot
+  );
 
   const toggleFavourite = useCallback((productId: string) => {
     const currentFavourites = loadFavs();

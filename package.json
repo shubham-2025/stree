@@ -22,6 +22,6 @@
     "web:lint": "cd frontend && npm run lint"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": "20.x"
   }
 }

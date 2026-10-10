@@ -54,11 +54,11 @@ export default function HomeWhyChooseUs() {
               </svg>
             </div>
             <h3 className="mb-1 text-xs font-bold text-foreground sm:mb-2 sm:text-base">
-              Free Shipping
+              Flat ₹29 Delivery
             </h3>
             <p className="text-[10px] leading-relaxed text-muted sm:text-sm">
-              Free delivery across India on every order. No minimum purchase
-              required. Fast and reliable.
+              A flat ₹29 delivery fee on every order across India. Fast and
+              reliable doorstep delivery.
             </p>
           </div>
 

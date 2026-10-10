@@ -29,10 +29,15 @@ export default function Error({
         </p>
       ) : (
         <p className="mt-3 max-w-md text-sm text-muted">
-          Please try again. New deployment? Confirm Supabase env vars are set
-          for Production and Preview.
+          Please try again in a moment. If this keeps happening, refresh the
+          page or contact support.
         </p>
       )}
+      {error?.message ? (
+        <p className="mt-2 max-w-lg break-words font-mono text-[10px] text-muted">
+          {error.message}
+        </p>
+      ) : null}
       {error.digest ? (
         <p className="mt-2 font-mono text-[10px] text-muted">
           Digest: {error.digest}

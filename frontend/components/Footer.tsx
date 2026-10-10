@@ -163,11 +163,24 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-gray-700/50 mt-8 sm:mt-12 pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <p className="text-xs text-gray-500 text-center sm:text-left">
-            © {new Date().getFullYear()}{" "}
-            <span className="text-brand-light font-semibold">स्त्री (Stree)</span>.
-            All rights reserved. Made with ❤️ in India.
-          </p>
+          <div className="text-xs text-gray-500 text-center sm:text-left space-y-1.5">
+            <p>
+              © {new Date().getFullYear()}{" "}
+              <span className="text-brand-light font-semibold">स्त्री (Stree)</span>.
+              All rights reserved. Made with ❤️ in India.
+            </p>
+            <p>
+              Designed and crafted by{" "}
+              <a
+                href="https://www.buildwithwebsmith.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-light font-medium transition-colors hover:text-white"
+              >
+                Build with Websmith
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-6 text-xs text-gray-500">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
