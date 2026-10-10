@@ -142,10 +142,10 @@ export default function Footer() {
               <li className="flex items-center gap-2 sm:gap-3">
                 <span className="text-sm sm:text-lg">📧</span>
                 <a
-                  href="mailto:info@streesarees.com"
+                  href="mailto:info.streesarees@gmail.com"
                   className="break-all text-gray-400 transition-colors hover:text-brand-light"
                 >
-                  info@streesarees.com
+                  info.streesarees@gmail.com
                 </a>
               </li>
               <li className="flex items-center gap-2 sm:gap-3">
