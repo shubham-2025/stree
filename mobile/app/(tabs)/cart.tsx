@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { getTheme } from '../../lib/theme';
 import Button from '../../components/ui/Button';
@@ -26,9 +27,10 @@ export default function CartScreen(): React.JSX.Element {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme);
+  const { isLoggedIn } = useAuth();
   const { clear, hydrated, items, remove, total, update } = useCart();
 
-  const deliveryFee = useMemo(() => (total >= 5000 || total === 0 ? 0 : 99), [total]);
+  const deliveryFee = useMemo(() => (total === 0 ? 0 : 29), [total]);
   const grandTotal = total + deliveryFee;
 
   if (!hydrated) {
@@ -85,7 +87,7 @@ export default function CartScreen(): React.JSX.Element {
           <View className="gap-3">
             <View className="flex-row items-center justify-between">
               <Text className="text-[15px]" style={{ color: theme.colors.textMuted }}>
-                Subtotal
+                Items subtotal
               </Text>
               <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
                 {formatPrice(total)}
@@ -94,19 +96,25 @@ export default function CartScreen(): React.JSX.Element {
 
             <View className="flex-row items-center justify-between">
               <Text className="text-[15px]" style={{ color: theme.colors.textMuted }}>
-                Delivery
+                Delivery fee
               </Text>
               <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
                 {deliveryFee === 0 ? 'FREE' : formatPrice(deliveryFee)}
               </Text>
             </View>
 
+            {deliveryFee > 0 ? (
+              <Text className="text-[12px]" style={{ color: theme.colors.textMuted }}>
+                Flat ₹29 delivery fee on every order
+              </Text>
+            ) : null}
+
             <View
               className="mt-1 flex-row items-center justify-between border-t pt-4"
               style={{ borderColor: theme.colors.border }}
             >
               <Text className="text-[18px] font-semibold" style={{ color: theme.colors.text }}>
-                Total
+                Payable total
               </Text>
               <Text className="text-[22px] font-bold" style={{ color: theme.colors.primary }}>
                 {formatPrice(grandTotal)}
@@ -115,8 +123,10 @@ export default function CartScreen(): React.JSX.Element {
 
             <Button
               className="mt-2"
-              onPress={() => router.push('/checkout')}
-              text="Proceed to Checkout"
+              onPress={() =>
+                router.push(isLoggedIn ? '/checkout' : '/auth/login?returnTo=%2Fcheckout')
+              }
+              text={isLoggedIn ? 'Proceed to Checkout' : 'Sign In to Checkout'}
             />
 
             <Button

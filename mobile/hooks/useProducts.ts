@@ -4,8 +4,11 @@ import { useFocusEffect } from 'expo-router';
 import {
   api,
   buildProductQueryParams,
+  fetchSupabaseProducts,
   getApiErrorMessage,
   normalizeProduct,
+  shouldPreferSupabaseCatalogReads,
+  shouldUseSupabaseCatalogFallback,
 } from '../lib/api';
 import type {
   ApiProduct,
@@ -228,14 +231,22 @@ export function useProducts(initialFilters: UseProductsOptions = {}): UseProduct
       }
 
       try {
-        const response = await api.get<unknown>('/products', {
-          params: buildProductQueryParams({
-            ...filters,
-            page: targetPage,
-            limit,
-          }),
-        });
-        const normalized = normalizeProductsPayload(response.data, targetPage, limit);
+        const requestFilters = {
+          ...filters,
+          page: targetPage,
+          limit,
+        };
+        const normalized = shouldPreferSupabaseCatalogReads()
+          ? await fetchSupabaseProducts(requestFilters)
+          : normalizeProductsPayload(
+              (
+                await api.get<unknown>('/products', {
+                  params: buildProductQueryParams(requestFilters),
+                })
+              ).data,
+              targetPage,
+              limit
+            );
 
         if (requestId !== requestIdRef.current) {
           return;
@@ -268,6 +279,39 @@ export function useProducts(initialFilters: UseProductsOptions = {}): UseProduct
           };
         });
       } catch (fetchError) {
+        if (!shouldPreferSupabaseCatalogReads() && shouldUseSupabaseCatalogFallback(fetchError)) {
+          try {
+            const fallbackPayload = await fetchSupabaseProducts({
+              ...filters,
+              page: targetPage,
+              limit,
+            });
+
+            if (requestId !== requestIdRef.current) {
+              return;
+            }
+
+            setData((currentData) =>
+              mode === 'append'
+                ? Array.from(
+                    new Map(
+                      [...currentData, ...fallbackPayload.items].map((product) => [
+                        product.id,
+                        product,
+                      ])
+                    ).values()
+                  )
+                : fallbackPayload.items
+            );
+            setPage(targetPage);
+            setHasMore(Boolean(fallbackPayload.meta.hasMore));
+            setError(null);
+            return;
+          } catch (fallbackError) {
+            fetchError = fallbackError;
+          }
+        }
+
         if (requestId !== requestIdRef.current) {
           return;
         }

@@ -11,8 +11,11 @@ import React, {
 import {
   Animated,
   Easing,
+  Modal,
+  Platform,
   StyleSheet,
   Text,
+  ToastAndroid,
   View,
   useColorScheme,
 } from 'react-native';
@@ -68,6 +71,7 @@ export interface ToastProviderProps {
 
 /**
  * Provides a compact app-wide toast system for quick action feedback.
+ * Renders inside a transparent Modal so it appears above native screens.
  */
 export function ToastProvider({ children }: ToastProviderProps): React.JSX.Element {
   const colorScheme = useColorScheme();
@@ -111,7 +115,7 @@ export function ToastProvider({ children }: ToastProviderProps): React.JSX.Eleme
 
   const showToast = useCallback(
     ({
-      durationMs = 2200,
+      durationMs = 2800,
       iconName = 'sparkles-outline',
       message,
       title,
@@ -128,33 +132,53 @@ export function ToastProvider({ children }: ToastProviderProps): React.JSX.Eleme
         durationMs,
       });
 
-      opacity.stopAnimation();
-      translateY.stopAnimation();
-      opacity.setValue(0);
-      translateY.setValue(24);
-
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateY, {
-          toValue: 0,
-          damping: 16,
-          mass: 0.8,
-          stiffness: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      timeoutRef.current = setTimeout(() => {
-        hideToast();
-      }, durationMs);
+      // Native Android toast as a guaranteed fallback above Expo Go screens.
+      if (Platform.OS === 'android') {
+        const androidMessage = message ? `${title}: ${message}` : title;
+        ToastAndroid.showWithGravity(
+          androidMessage,
+          durationMs > 3000 ? ToastAndroid.LONG : ToastAndroid.SHORT,
+          ToastAndroid.BOTTOM
+        );
+      }
     },
-    [clearHideTimeout, hideToast, opacity, translateY]
+    [clearHideTimeout]
   );
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    opacity.stopAnimation();
+    translateY.stopAnimation();
+    opacity.setValue(0);
+    translateY.setValue(24);
+
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        damping: 16,
+        mass: 0.8,
+        stiffness: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    timeoutRef.current = setTimeout(() => {
+      hideToast();
+    }, toast.durationMs ?? 2800);
+
+    return () => {
+      clearHideTimeout();
+    };
+  }, [clearHideTimeout, hideToast, opacity, toast, translateY]);
 
   useEffect(
     () => () => {
@@ -174,80 +198,86 @@ export function ToastProvider({ children }: ToastProviderProps): React.JSX.Eleme
 
   return (
     <ToastContext.Provider value={contextValue}>
-      {children}
-      <View
+      <View style={{ flex: 1 }}>{children}</View>
+      <Modal
+        animationType="none"
         pointerEvents="box-none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          {
-            justifyContent: 'flex-end',
-            paddingHorizontal: 16,
-            paddingBottom: Math.max(insets.bottom, 16) + 78,
-            zIndex: 999,
-            elevation: 999,
-          },
-        ]}
+        statusBarTranslucent
+        transparent
+        visible={Boolean(toast)}
       >
-        {toast && toneStyle ? (
-          <Animated.View
-            pointerEvents="none"
-            style={{
-              opacity,
-              transform: [{ translateY }],
-              alignSelf: 'stretch',
-            }}
-          >
-            <View
-              className="overflow-hidden rounded-[24px] border px-4 py-3"
+        <View
+          pointerEvents="box-none"
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              justifyContent: 'flex-end',
+              paddingHorizontal: 16,
+              paddingBottom: Math.max(insets.bottom, 16) + 78,
+            },
+          ]}
+        >
+          {toast && toneStyle ? (
+            <Animated.View
+              pointerEvents="none"
               style={{
-                backgroundColor: theme.isDark
-                  ? 'rgba(34, 29, 27, 0.98)'
-                  : 'rgba(255, 255, 255, 0.98)',
-                borderColor: theme.colors.border,
-                shadowColor: theme.isDark ? '#000000' : '#2C2C2C',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: theme.isDark ? 0.28 : 0.12,
-                shadowRadius: 18,
-                elevation: 8,
+                opacity,
+                transform: [{ translateY }],
+                alignSelf: 'stretch',
               }}
             >
               <View
-                className="absolute inset-y-0 left-0 w-1.5"
-                style={{ backgroundColor: toneStyle.accent }}
-              />
-              <View className="flex-row items-center gap-3 pl-2">
+                className="overflow-hidden rounded-[24px] border px-4 py-3"
+                style={{
+                  backgroundColor: theme.isDark
+                    ? 'rgba(34, 29, 27, 0.98)'
+                    : 'rgba(255, 255, 255, 0.98)',
+                  borderColor: theme.colors.border,
+                  shadowColor: theme.isDark ? '#000000' : '#2C2C2C',
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: theme.isDark ? 0.28 : 0.12,
+                  shadowRadius: 18,
+                  elevation: 8,
+                }}
+              >
                 <View
-                  className="h-12 w-12 items-center justify-center rounded-[16px]"
-                  style={{ backgroundColor: toneStyle.iconBackground }}
-                >
-                  <Ionicons
-                    color={toneStyle.iconColor}
-                    name={toast.iconName ?? 'sparkles-outline'}
-                    size={22}
-                  />
-                </View>
-
-                <View className="flex-1">
-                  <Text
-                    className="text-[15px] font-semibold"
-                    style={{ color: theme.colors.text }}
+                  className="absolute inset-y-0 left-0 w-1.5"
+                  style={{ backgroundColor: toneStyle.accent }}
+                />
+                <View className="flex-row items-center gap-3 pl-2">
+                  <View
+                    className="h-12 w-12 items-center justify-center rounded-[16px]"
+                    style={{ backgroundColor: toneStyle.iconBackground }}
                   >
-                    {toast.title}
-                  </Text>
-                  {toast.message ? (
+                    <Ionicons
+                      color={toneStyle.iconColor}
+                      name={toast.iconName ?? 'sparkles-outline'}
+                      size={22}
+                    />
+                  </View>
+
+                  <View className="flex-1">
                     <Text
-                      className="mt-1 text-[13px] leading-5"
-                      style={{ color: theme.colors.textMuted }}
+                      className="text-[15px] font-semibold"
+                      style={{ color: theme.colors.text }}
                     >
-                      {toast.message}
+                      {toast.title}
                     </Text>
-                  ) : null}
+                    {toast.message ? (
+                      <Text
+                        className="mt-1 text-[13px] leading-5"
+                        style={{ color: theme.colors.textMuted }}
+                      >
+                        {toast.message}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               </View>
-            </View>
-          </Animated.View>
-        ) : null}
-      </View>
+            </Animated.View>
+          ) : null}
+        </View>
+      </Modal>
     </ToastContext.Provider>
   );
 }

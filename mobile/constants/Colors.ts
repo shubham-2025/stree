@@ -4,6 +4,8 @@ export const BACKGROUND = '#FAF7F2';
 export const TEXT_DARK = '#2C2C2C';
 export const TEXT_LIGHT = '#666666';
 export const BORDER = '#E0E0E0';
+export const DARK_PRIMARY = '#D78BA4';
+export const DARK_SECONDARY = '#E1C372';
 
 export const SURFACE = '#FFFFFF';
 export const SUCCESS = '#2E7D32';
@@ -40,8 +42,8 @@ export const LIGHT_COLORS = {
 } as const;
 
 export const DARK_COLORS = {
-  primary: PRIMARY,
-  secondary: SECONDARY,
+  primary: DARK_PRIMARY,
+  secondary: DARK_SECONDARY,
   background: DARK_BACKGROUND,
   surface: DARK_SURFACE,
   text: DARK_TEXT,

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, Text, View, useColorScheme } from 'react-native';
+import { Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { getTheme } from '../../lib/theme';
 import { Card } from '../ui/Card';
+import Button from '../ui/Button';
 
 export interface EmptyStateProps {
   title: string;
@@ -66,39 +67,34 @@ export function EmptyState({
           {message}
         </Text>
 
-        {ctaLabel ? (
-          <Pressable
-            accessibilityRole="button"
-            className="mt-6 min-h-[54px] w-full items-center justify-center rounded-[18px] px-5 py-4"
-            onPress={onPressCta}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? '#65182F' : theme.colors.primary,
-              borderColor: theme.colors.primary,
-              borderWidth: 1,
-              opacity: onPressCta ? 1 : 0.96,
-            })}
-          >
-            <Text className="text-[16px] font-semibold" style={{ color: '#FFFFFF' }}>
-              {ctaLabel}
-            </Text>
-          </Pressable>
-        ) : null}
+        {ctaLabel || secondaryLabel ? (
+          <View className="mt-6 w-full">
+            {ctaLabel ? (
+              <Button
+                onPress={onPressCta}
+                size="lg"
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  borderColor: theme.colors.primary,
+                }}
+                text={ctaLabel}
+              />
+            ) : null}
 
-        {secondaryLabel ? (
-          <Pressable
-            accessibilityRole="button"
-            className="mt-3 min-h-[54px] w-full items-center justify-center rounded-[18px] px-5 py-4"
-            onPress={onPressSecondary}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? `${theme.colors.primary}10` : 'transparent',
-              borderColor: theme.colors.border,
-              borderWidth: 1,
-            })}
-          >
-            <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
-              {secondaryLabel}
-            </Text>
-          </Pressable>
+            {secondaryLabel ? (
+              <Button
+                className={ctaLabel ? 'mt-3' : undefined}
+                onPress={onPressSecondary}
+                size="md"
+                style={{
+                  backgroundColor: theme.isDark ? `${theme.colors.primary}12` : 'transparent',
+                  borderColor: theme.colors.primary,
+                }}
+                text={secondaryLabel}
+                variant="outline"
+              />
+            ) : null}
+          </View>
         ) : null}
       </Card>
     </View>

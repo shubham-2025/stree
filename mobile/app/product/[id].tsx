@@ -1,17 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   Share,
+  StyleSheet,
   Text,
   View,
   useColorScheme,
   useWindowDimensions,
+  type GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { useProduct } from '../../hooks/useProduct';
 import { useWishlist } from '../../hooks/useWishlist';
@@ -45,9 +48,11 @@ export default function ProductDetailScreen(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme);
+  const { isLoggedIn } = useAuth();
   const { add, count, items } = useCart();
   const { isFavorite, toggle } = useWishlist();
   const { data: product, error, loading, refetch } = useProduct(id);
+  const galleryTouchXRef = useRef<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<DetailSectionKey, boolean>>({
     fabric: true,
     occasion: false,
@@ -56,6 +61,48 @@ export default function ProductDetailScreen(): React.JSX.Element {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
 
   const images = useMemo(() => product?.images ?? [], [product?.images]);
+  const galleryImages = useMemo(
+    () => (images.length > 0 ? images : ['']),
+    [images]
+  );
+  const galleryImageHeight = width * 1.25;
+  const galleryFrameHeight = galleryImageHeight + 8;
+  const activeGalleryImage = galleryImages[currentImageIndex] ?? galleryImages[0] ?? '';
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [product?.id]);
+
+  const goToGalleryIndex = useCallback(
+    (nextIndex: number): void => {
+      const clampedIndex = Math.max(0, Math.min(nextIndex, galleryImages.length - 1));
+      setCurrentImageIndex(clampedIndex);
+    },
+    [galleryImages.length]
+  );
+
+  const handleGalleryTouchStart = useCallback((event: GestureResponderEvent): void => {
+    galleryTouchXRef.current = event.nativeEvent.pageX;
+  }, []);
+
+  const handleGalleryTouchEnd = useCallback(
+    (event: GestureResponderEvent): void => {
+      const startX = galleryTouchXRef.current;
+      galleryTouchXRef.current = null;
+
+      if (startX == null || galleryImages.length <= 1) {
+        return;
+      }
+
+      const deltaX = event.nativeEvent.pageX - startX;
+      if (deltaX <= -48) {
+        goToGalleryIndex(currentImageIndex + 1);
+      } else if (deltaX >= 48) {
+        goToGalleryIndex(currentImageIndex - 1);
+      }
+    },
+    [currentImageIndex, galleryImages.length, goToGalleryIndex]
+  );
 
   const toggleSection = (section: DetailSectionKey): void => {
     setExpandedSections((currentSections) => ({
@@ -87,6 +134,11 @@ export default function ProductDetailScreen(): React.JSX.Element {
       add(product, 1);
     }
 
+    if (!isLoggedIn) {
+      router.push('/auth/login?returnTo=%2Fcheckout');
+      return;
+    }
+
     router.push('/checkout');
   };
 
@@ -96,8 +148,7 @@ export default function ProductDetailScreen(): React.JSX.Element {
         <Header
           cartCount={count}
           showBackButton
-          showCartButton={false}
-          showProfileButton
+          showCartButton
           subtitle="Catalogue"
           title="Product Details"
         />
@@ -117,8 +168,7 @@ export default function ProductDetailScreen(): React.JSX.Element {
         <Header
           cartCount={count}
           showBackButton
-          showCartButton={false}
-          showProfileButton
+          showCartButton
           subtitle="Catalogue"
           title="Product Details"
         />
@@ -138,9 +188,8 @@ export default function ProductDetailScreen(): React.JSX.Element {
     <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
       <Header
         cartCount={count}
-        showBackButton={false}
-        showCartButton={false}
-        showProfileButton
+        showBackButton
+        showCartButton
         subtitle="Catalogue"
         title="Product Details"
       />
@@ -150,58 +199,123 @@ export default function ProductDetailScreen(): React.JSX.Element {
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          horizontal
-          onMomentumScrollEnd={(event) => {
-            const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-            setCurrentImageIndex(nextIndex);
-          }}
-          pagingEnabled
-          scrollEventThrottle={16}
-          showsHorizontalScrollIndicator={false}
-        >
-          {(images.length > 0 ? images : ['']).map((image, index) => (
-            <View key={`${image}-${index}`} style={{ width }}>
-              <ScrollView
-                bounces={false}
-                centerContent
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
-                maximumZoomScale={3}
-                minimumZoomScale={1}
-                showsVerticalScrollIndicator={false}
-              >
-                <Image
-                  contentFit="cover"
-                  placeholder={{ blurhash: IMAGE_BLURHASH }}
-                  source={image ? { uri: image } : undefined}
-                  style={{
-                    width: width - 32,
-                    height: width * 1.25,
-                    borderRadius: 28,
-                    backgroundColor: theme.colors.border,
-                  }}
-                  transition={0}
-                />
-              </ScrollView>
-            </View>
-          ))}
-        </ScrollView>
-
-        {images.length > 1 ? (
-          <View className="mt-4 flex-row items-center justify-center gap-2">
-            {images.map((image, index) => (
-              <View
-                key={`${image}-dot-${index}`}
-                className="h-2 rounded-full"
+        <View>
+          <View
+            onTouchEnd={handleGalleryTouchEnd}
+            onTouchStart={handleGalleryTouchStart}
+            style={{ width, height: galleryFrameHeight, overflow: 'hidden' }}
+          >
+            <View style={{ width, paddingHorizontal: 16, paddingTop: 8 }}>
+              <Image
+                key={`${activeGalleryImage}-${currentImageIndex}`}
+                contentFit="cover"
+                placeholder={{ blurhash: IMAGE_BLURHASH }}
+                source={activeGalleryImage ? { uri: activeGalleryImage } : undefined}
                 style={{
-                  backgroundColor:
-                    index === currentImageIndex ? theme.colors.primary : theme.colors.border,
-                  width: index === currentImageIndex ? 24 : 8,
+                  width: width - 32,
+                  height: galleryImageHeight,
+                  borderRadius: 28,
+                  backgroundColor: theme.colors.border,
                 }}
+                transition={180}
               />
-            ))}
+            </View>
+
+            {galleryImages.length > 1 ? (
+              <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+                <Pressable
+                  accessibilityLabel="Previous image"
+                  accessibilityRole="button"
+                  disabled={currentImageIndex === 0}
+                  hitSlop={12}
+                  onPress={() => goToGalleryIndex(currentImageIndex - 1)}
+                  style={{
+                    alignItems: 'center',
+                    backgroundColor:
+                      currentImageIndex === 0
+                        ? 'rgba(18, 12, 10, 0.35)'
+                        : 'rgba(18, 12, 10, 0.78)',
+                    borderColor: 'rgba(255,255,255,0.7)',
+                    borderRadius: 26,
+                    borderWidth: 1.5,
+                    elevation: 12,
+                    height: 52,
+                    justifyContent: 'center',
+                    left: 24,
+                    opacity: currentImageIndex === 0 ? 0.5 : 1,
+                    position: 'absolute',
+                    top: 8 + galleryImageHeight / 2 - 26,
+                    width: 52,
+                  }}
+                >
+                  <Ionicons color="#FFFFFF" name="chevron-back" size={26} />
+                </Pressable>
+
+                <Pressable
+                  accessibilityLabel="Next image"
+                  accessibilityRole="button"
+                  disabled={currentImageIndex >= galleryImages.length - 1}
+                  hitSlop={12}
+                  onPress={() => goToGalleryIndex(currentImageIndex + 1)}
+                  style={{
+                    alignItems: 'center',
+                    backgroundColor:
+                      currentImageIndex >= galleryImages.length - 1
+                        ? 'rgba(18, 12, 10, 0.35)'
+                        : 'rgba(18, 12, 10, 0.78)',
+                    borderColor: 'rgba(255,255,255,0.7)',
+                    borderRadius: 26,
+                    borderWidth: 1.5,
+                    elevation: 12,
+                    height: 52,
+                    justifyContent: 'center',
+                    opacity: currentImageIndex >= galleryImages.length - 1 ? 0.5 : 1,
+                    position: 'absolute',
+                    right: 24,
+                    top: 8 + galleryImageHeight / 2 - 26,
+                    width: 52,
+                  }}
+                >
+                  <Ionicons color="#FFFFFF" name="chevron-forward" size={26} />
+                </Pressable>
+              </View>
+            ) : null}
           </View>
-        ) : null}
+
+          {galleryImages.length > 1 ? (
+            <>
+              <View className="mt-4 flex-row items-center justify-center gap-2">
+                {galleryImages.map((image, index) => (
+                  <Pressable
+                    key={`${image}-dot-${index}`}
+                    accessibilityLabel={`Show image ${index + 1}`}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    onPress={() => goToGalleryIndex(index)}
+                  >
+                    <View
+                      className="h-2 rounded-full"
+                      style={{
+                        backgroundColor:
+                          index === currentImageIndex
+                            ? theme.colors.primary
+                            : theme.colors.border,
+                        width: index === currentImageIndex ? 24 : 8,
+                      }}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text
+                className="mt-2 text-center text-[12px] font-medium"
+                style={{ color: theme.colors.textMuted }}
+              >
+                {currentImageIndex + 1} / {galleryImages.length}
+              </Text>
+            </>
+          ) : null}
+        </View>
 
         <View className="px-4 pt-6">
           <View className="flex-row items-start justify-between gap-4">

@@ -15,7 +15,7 @@
     },
     "androidStatusBar": {
       "backgroundColor": "#00000000",
-      "barStyle": "light-content",
+      "barStyle": "dark-content",
       "translucent": true
     },
     "assetBundlePatterns": [
@@ -38,7 +38,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-font"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "33cba31a-fc31-4596-92ef-5877f128a98e"
+      }
+    },
+    "owner": "stree"
   }
 }

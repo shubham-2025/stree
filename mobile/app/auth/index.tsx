@@ -7,8 +7,9 @@ import Header from '../../components/common/Header';
 import BrandMark from '../../components/common/BrandMark';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import { DEMO_EMAIL, DEMO_PASSWORD, useAuth } from '../../contexts/AuthContext';
-import { setStorageItem, STORAGE_KEYS } from '../../lib/storage';
+import { useAuth } from '../../contexts/AuthContext';
+import { markAuthIntroSeen } from '../../lib/auth-intro';
+import { DEMO_EMAIL, DEMO_PASSWORD, isDemoLoginEnabled } from '../../lib/runtime';
 import { getTheme } from '../../lib/theme';
 
 /**
@@ -31,7 +32,7 @@ export default function AuthEntryScreen(): React.JSX.Element {
   }, [destination, isLoggedIn, router]);
 
   const handleContinueAsGuest = async (): Promise<void> => {
-    await setStorageItem(STORAGE_KEYS.authIntroSeen, true).catch(() => undefined);
+    await markAuthIntroSeen();
     router.replace(destination);
   };
 
@@ -57,7 +58,7 @@ export default function AuthEntryScreen(): React.JSX.Element {
                 Sign in, create account, or continue as guest.
               </Text>
               <Text className="mt-3 text-[15px] leading-7" style={{ color: theme.colors.textMuted }}>
-                I have separated the auth flow so login and registration stay on their own screens. This page is now only the entry choice.
+                Track orders with an account, save your address for faster checkout, and sign in before placing any order. You can still browse as a guest for now.
               </Text>
             </View>
           </View>
@@ -90,60 +91,61 @@ export default function AuthEntryScreen(): React.JSX.Element {
           </View>
         </Card>
 
-        <Card className="rounded-[24px]">
-          <View className="flex-row items-start gap-3">
+        {isDemoLoginEnabled ? (
+          <Card className="rounded-[24px]">
+            <View className="flex-row items-start gap-3">
+              <View
+                className="h-10 w-10 items-center justify-center rounded-[14px]"
+                style={{ backgroundColor: `${theme.colors.primary}12` }}
+              >
+                <Ionicons color={theme.colors.primary} name="flash-outline" size={18} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[18px] font-semibold" style={{ color: theme.colors.text }}>
+                  Demo login for QA
+                </Text>
+                <Text className="mt-2 text-[14px] leading-6" style={{ color: theme.colors.textMuted }}>
+                  This test-only shortcut is hidden by default and should only be enabled in review or internal builds.
+                </Text>
+              </View>
+            </View>
+
             <View
-              className="h-10 w-10 items-center justify-center rounded-[14px]"
-              style={{ backgroundColor: `${theme.colors.primary}12` }}
+              className="mt-5 rounded-[18px] border px-4 py-4"
+              style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
             >
-              <Ionicons color={theme.colors.primary} name="flash-outline" size={18} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[18px] font-semibold" style={{ color: theme.colors.text }}>
-                Demo login for instant testing
+              <Text className="text-[13px] font-semibold" style={{ color: theme.colors.textMuted }}>
+                Demo email
               </Text>
-              <Text className="mt-2 text-[14px] leading-6" style={{ color: theme.colors.textMuted }}>
-                Real signup currently asks for email verification. For immediate testing, use this demo account.
+              <Text className="mt-1 text-[16px] font-semibold" style={{ color: theme.colors.text }}>
+                {DEMO_EMAIL}
+              </Text>
+
+              <Text className="mt-4 text-[13px] font-semibold" style={{ color: theme.colors.textMuted }}>
+                Demo password
+              </Text>
+              <Text className="mt-1 text-[16px] font-semibold" style={{ color: theme.colors.text }}>
+                {DEMO_PASSWORD}
               </Text>
             </View>
-          </View>
 
-          <View
-            className="mt-5 rounded-[18px] border px-4 py-4"
-            style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
-          >
-            <Text className="text-[13px] font-semibold" style={{ color: theme.colors.textMuted }}>
-              Demo email
-            </Text>
-            <Text className="mt-1 text-[16px] font-semibold" style={{ color: theme.colors.text }}>
-              {DEMO_EMAIL}
-            </Text>
-
-            <Text className="mt-4 text-[13px] font-semibold" style={{ color: theme.colors.textMuted }}>
-              Demo password
-            </Text>
-            <Text className="mt-1 text-[16px] font-semibold" style={{ color: theme.colors.text }}>
-              {DEMO_PASSWORD}
-            </Text>
-          </View>
-
-          <Button
-            className="mt-4"
-            onPress={() =>
-              router.push({
-                pathname: '/auth/login',
-                params: {
-                  email: DEMO_EMAIL,
-                  password: DEMO_PASSWORD,
-                  returnTo: destination,
-                },
-              })
-            }
-            text="Use Demo Login"
-          />
-        </Card>
+            <Button
+              className="mt-4"
+              onPress={() =>
+                router.push({
+                  pathname: '/auth/login',
+                  params: {
+                    email: DEMO_EMAIL,
+                    password: DEMO_PASSWORD,
+                    returnTo: destination,
+                  },
+                })
+              }
+              text="Use Demo Login"
+            />
+          </Card>
+        ) : null}
       </ScrollView>
     </View>
   );
 }
-

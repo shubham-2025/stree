@@ -1,1 +1,15 @@
 node_modules/
+.tools/
+.env
+.env.*
+!.env.example
+frontend/.auth-test.*.log
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+.vercel
+frontend/.vercel
+

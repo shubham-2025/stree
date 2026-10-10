@@ -64,6 +64,35 @@ function calculateCartSummary(items: CartItem[]): CartSummary {
   );
 }
 
+function resolveStockLimit(product: Pick<Product, 'stockQty' | 'inStock'>): number | undefined {
+  if (typeof product.stockQty === 'number' && product.stockQty >= 0) {
+    return Math.floor(product.stockQty);
+  }
+
+  if (product.inStock === false) {
+    return 0;
+  }
+
+  return undefined;
+}
+
+function clampCartQuantity(
+  quantity: number,
+  stockLimit?: number
+): number {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return 0;
+  }
+
+  const normalized = Math.floor(quantity);
+
+  if (typeof stockLimit !== 'number') {
+    return normalized;
+  }
+
+  return Math.max(0, Math.min(normalized, stockLimit));
+}
+
 function createCartItem(product: Product, quantity: number): CartItem {
   return {
     ...product,
@@ -110,18 +139,40 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     }
     case 'add': {
-      const quantity = Number.isFinite(action.payload.quantity) && action.payload.quantity > 0
-        ? Math.floor(action.payload.quantity)
-        : 1;
+      const stockLimit = resolveStockLimit(action.payload.product);
       const existingIndex = state.items.findIndex((item) => item.id === action.payload.product.id);
+      const existingQuantity =
+        existingIndex >= 0 ? state.items[existingIndex]?.quantity ?? 0 : 0;
+      const requestedQuantity =
+        Number.isFinite(action.payload.quantity) && action.payload.quantity > 0
+          ? Math.floor(action.payload.quantity)
+          : 1;
+      const nextQuantity = clampCartQuantity(
+        existingQuantity + requestedQuantity,
+        stockLimit
+      );
+
+      if (nextQuantity <= 0) {
+        return state;
+      }
+
       const items =
         existingIndex >= 0
           ? state.items.map((item, index) =>
               index === existingIndex
-                ? { ...item, quantity: item.quantity + quantity }
+                ? {
+                    ...item,
+                    ...action.payload.product,
+                    images: Array.isArray(action.payload.product.images)
+                      ? action.payload.product.images
+                      : action.payload.product.image
+                        ? [action.payload.product.image]
+                        : item.images,
+                    quantity: nextQuantity,
+                  }
                 : item
             )
-          : [...state.items, createCartItem(action.payload.product, quantity)];
+          : [...state.items, createCartItem(action.payload.product, nextQuantity)];
 
       return {
         ...state,
@@ -138,9 +189,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     }
     case 'update': {
-      const nextQuantity = Number.isFinite(action.payload.quantity)
+      const targetItem = state.items.find((item) => item.id === action.payload.id);
+      const stockLimit = targetItem ? resolveStockLimit(targetItem) : undefined;
+      const requestedQuantity = Number.isFinite(action.payload.quantity)
         ? Math.floor(action.payload.quantity)
         : 0;
+      const nextQuantity = clampCartQuantity(requestedQuantity, stockLimit);
 
       if (nextQuantity <= 0) {
         const items = state.items.filter((item) => item.id !== action.payload.id);
@@ -218,6 +272,29 @@ export function CartProvider({ children }: CartProviderProps): React.JSX.Element
   }, [state.hydrated, state.items]);
 
   const add = useCallback((product: Product, qty = 1): void => {
+    const stockLimit = resolveStockLimit(product);
+    const existingQuantity =
+      state.items.find((item) => item.id === product.id)?.quantity ?? 0;
+    const requestedQuantity =
+      Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
+    const nextQuantity = clampCartQuantity(
+      existingQuantity + requestedQuantity,
+      stockLimit
+    );
+
+    if (nextQuantity <= 0 || nextQuantity === existingQuantity) {
+      showToast({
+        title: product.inStock === false ? 'Out of stock' : 'Stock limit reached',
+        message:
+          product.inStock === false
+            ? `${product.name} is currently unavailable.`
+            : `Only ${stockLimit ?? 0} piece(s) of ${product.name} can be added.`,
+        iconName: 'alert-circle-outline',
+        tone: 'primary',
+      });
+      return;
+    }
+
     dispatch({
       type: 'add',
       payload: {
@@ -226,12 +303,13 @@ export function CartProvider({ children }: CartProviderProps): React.JSX.Element
       },
     });
     showToast({
-      title: `${product.name} added to bag`,
-      message: 'Your selection is ready for checkout.',
+      title: 'Added to cart',
+      message: `${product.name} · ${nextQuantity} in bag`,
       iconName: 'bag-check-outline',
       tone: 'success',
+      durationMs: 3200,
     });
-  }, [showToast]);
+  }, [showToast, state.items]);
 
   const remove = useCallback((id: string): void => {
     const removedItem = state.items.find((item) => item.id === id);

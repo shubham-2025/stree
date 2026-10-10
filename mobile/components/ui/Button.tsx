@@ -237,21 +237,28 @@ export function Button({
     >
       <View className="flex-row items-center justify-center gap-2.5">
         {loading ? (
-          <View
-            className="items-center justify-center rounded-[12px] p-1"
-            style={{
-              backgroundColor: theme.isDark ? withOpacity(theme.colors.surface, 0.72) : 'rgba(255, 255, 255, 0.2)',
-            }}
-          >
-            <Image
-              source={require('../../assets/images/stree-navbar-logo.png')}
+          <>
+            <View
+              className="items-center justify-center rounded-[12px] p-1"
               style={{
-                width: size === 'sm' ? 18 : 20,
-                height: size === 'sm' ? 18 : 20,
-                resizeMode: 'contain',
+                backgroundColor: theme.isDark
+                  ? withOpacity(theme.colors.surface, 0.72)
+                  : 'rgba(255, 255, 255, 0.2)',
               }}
-            />
-          </View>
+            >
+              <Image
+                source={require('../../assets/images/stree-navbar-logo.png')}
+                style={{
+                  width: size === 'sm' ? 18 : 20,
+                  height: size === 'sm' ? 18 : 20,
+                  resizeMode: 'contain',
+                }}
+              />
+            </View>
+            <Text className={labelClassName} style={{ color: palette.textColor }}>
+              {text.trim().length > 0 ? text : 'Please wait…'}
+            </Text>
+          </>
         ) : (
           <>
             {leftIcon ? <View style={{ pointerEvents: 'none' }}>{leftIcon}</View> : null}

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useAuth } from '../../hooks/useAuth';
-import { DEMO_EMAIL, DEMO_PASSWORD } from '../../contexts/AuthContext';
+import { markAuthIntroSeen } from '../../lib/auth-intro';
+import { DEMO_EMAIL, DEMO_PASSWORD, isDemoLoginEnabled } from '../../lib/runtime';
 import { getTheme } from '../../lib/theme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -71,12 +71,18 @@ export default function LoginScreen(): React.JSX.Element {
 
     try {
       await login(email, password);
+      await markAuthIntroSeen();
       router.replace(destination);
     } catch (loginError) {
-      setError(
+      const message =
         loginError instanceof Error
           ? loginError.message
-          : 'Unable to sign you in right now.'
+          : 'Unable to sign you in right now.';
+
+      setError(
+        message.toLowerCase().includes('email not confirmed')
+          ? 'Your account is created, but email verification is still pending. Check your inbox, verify the account, and then sign in again.'
+          : message
       );
     } finally {
       setSubmitting(false);
@@ -118,6 +124,7 @@ export default function LoginScreen(): React.JSX.Element {
               label="Email"
               onChangeText={setEmail}
               placeholder="you@example.com"
+              required
               value={email}
             />
 
@@ -126,6 +133,7 @@ export default function LoginScreen(): React.JSX.Element {
               label="Password"
               onChangeText={setPassword}
               placeholder="Enter your password"
+              required
               rightIcon={
                 <Pressable onPress={() => setPasswordVisible((visible) => !visible)}>
                   <Ionicons
@@ -149,10 +157,10 @@ export default function LoginScreen(): React.JSX.Element {
               accessibilityRole="button"
               className="mt-4 self-start"
               onPress={() =>
-                Alert.alert(
-                  'Forgot password',
-                  'Password reset is currently handled through Stree support or the website sign-in flow.'
-                )
+                router.push({
+                  pathname: '/auth/forgot-password',
+                  params: { email: email.trim().toLowerCase() },
+                })
               }
             >
               <Text className="text-[13px] font-semibold" style={{ color: theme.colors.primary }}>
@@ -164,10 +172,10 @@ export default function LoginScreen(): React.JSX.Element {
               className="mt-6"
               loading={submitting || loading}
               onPress={() => void handleLogin()}
-              text="Sign In"
+              text={submitting || loading ? 'Please wait, signing you in…' : 'Sign In'}
             />
 
-            {(email === DEMO_EMAIL || password === DEMO_PASSWORD) ? (
+            {isDemoLoginEnabled && (email === DEMO_EMAIL || password === DEMO_PASSWORD) ? (
               <Text className="mt-4 text-[13px] leading-6" style={{ color: theme.colors.textMuted }}>
                 Demo credentials are prefilled. Tap Sign In to enter the app immediately.
               </Text>

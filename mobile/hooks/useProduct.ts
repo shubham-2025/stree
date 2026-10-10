@@ -3,8 +3,11 @@ import { useFocusEffect } from 'expo-router';
 
 import {
   api,
+  fetchSupabaseProductById,
   getApiErrorMessage,
   normalizeProduct,
+  shouldPreferSupabaseCatalogReads,
+  shouldUseSupabaseCatalogFallback,
 } from '../lib/api';
 import type { ApiProduct, Product } from '../lib/types';
 
@@ -59,9 +62,15 @@ export function useProduct(id?: string | string[]): UseProductResult {
     setLoading(true);
 
     try {
-      const response = await api.get<unknown>(`/products/${productId}`);
-      const extractedProduct = extractSingleProduct(response.data);
-      const product = extractedProduct ? normalizeProduct(extractedProduct) : null;
+      let product: Product | null;
+
+      if (shouldPreferSupabaseCatalogReads()) {
+        product = await fetchSupabaseProductById(productId);
+      } else {
+        const response = await api.get<unknown>(`/products/${productId}`);
+        const extractedProduct = extractSingleProduct(response.data);
+        product = extractedProduct ? normalizeProduct(extractedProduct) : null;
+      }
 
       if (requestId !== requestIdRef.current) {
         return;
@@ -74,6 +83,26 @@ export function useProduct(id?: string | string[]): UseProductResult {
       setData(product);
       setError(null);
     } catch (fetchError) {
+      if (!shouldPreferSupabaseCatalogReads() && shouldUseSupabaseCatalogFallback(fetchError)) {
+        try {
+          const fallbackProduct = await fetchSupabaseProductById(productId);
+
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+
+          if (!fallbackProduct) {
+            throw new Error('Product details were unavailable.');
+          }
+
+          setData(fallbackProduct);
+          setError(null);
+          return;
+        } catch (fallbackError) {
+          fetchError = fallbackError;
+        }
+      }
+
       if (requestId !== requestIdRef.current) {
         return;
       }

@@ -28,6 +28,8 @@ export default function CheckoutPage() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const deliveryFee = items.length > 0 ? 29 : 0;
+  const payableTotal = total + deliveryFee;
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -64,7 +66,7 @@ export default function CheckoutPage() {
           color: i.color,
           image: i.image,
         })),
-        total_amount: total,
+        total_amount: payableTotal,
       });
 
       if (result.error) {
@@ -324,9 +326,22 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-border mt-4 pt-4 flex justify-between font-bold">
-              <span>Total</span>
-              <span className="text-brand">{formatPrice(total)}</span>
+            <div className="border-t border-border mt-4 pt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Items subtotal</span>
+                <span className="font-semibold text-foreground">{formatPrice(total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Delivery fee</span>
+                <span className="font-semibold text-foreground">{formatPrice(deliveryFee)}</span>
+              </div>
+              <p className="text-xs text-muted">
+                Flat ₹29 delivery fee on every order
+              </p>
+              <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
+                <span>Payable total</span>
+                <span className="text-brand">{formatPrice(payableTotal)}</span>
+              </div>
             </div>
           </div>
         </div>

@@ -75,9 +75,9 @@ function getBadgePalette(
       };
     case 'sale':
       return {
-        backgroundColor: withOpacity(error, 0.14),
-        borderColor: 'transparent',
-        textColor: error,
+        backgroundColor: 'rgba(113, 28, 23, 0.92)',
+        borderColor: 'rgba(255, 245, 240, 0.42)',
+        textColor: '#FFF7F2',
       };
     case 'primary':
     default:
@@ -124,7 +124,7 @@ export function Badge({
       style={{
         backgroundColor: palette.backgroundColor,
         borderColor: palette.borderColor,
-        borderWidth: variant === 'outline' ? 1 : 0,
+        borderWidth: variant === 'outline' || variant === 'sale' ? 1 : 0,
       }}
     >
       {icon ? <View style={{ pointerEvents: 'none' }}>{icon}</View> : null}

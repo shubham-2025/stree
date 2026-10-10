@@ -2,7 +2,7 @@ import 'react-native-gesture-handler';
 import '../global.css';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { DeviceEventEmitter, View } from 'react-native';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,8 +13,11 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { CartProvider } from '../contexts/CartContext';
 import { WishlistProvider } from '../contexts/WishlistContext';
 import { ToastProvider } from '../contexts/ToastContext';
+import { ThemePreferenceProvider } from '../contexts/ThemePreferenceContext';
 import BrandLoader from '../components/common/BrandLoader';
 import { useAuth } from '../hooks/useAuth';
+import { useThemePreference } from '../hooks/useThemePreference';
+import { AUTH_INTRO_SEEN_EVENT } from '../lib/auth-intro';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../lib/storage';
 import { getTheme } from '../lib/theme';
 
@@ -53,13 +56,15 @@ function createNavigationTheme(
 
 function AppProviders({ children }: AppProvidersProps): React.JSX.Element {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <WishlistProvider>
-          <CartProvider>{children}</CartProvider>
-        </WishlistProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <ThemePreferenceProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <WishlistProvider>
+            <CartProvider>{children}</CartProvider>
+          </WishlistProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemePreferenceProvider>
   );
 }
 
@@ -90,8 +95,13 @@ function AppShell({ navigationTheme, theme }: AppShellProps): React.JSX.Element 
 
     void loadIntroState();
 
+    const subscription = DeviceEventEmitter.addListener(AUTH_INTRO_SEEN_EVENT, () => {
+      setAuthIntroSeen(true);
+    });
+
     return () => {
       isMounted = false;
+      subscription.remove();
     };
   }, []);
 
@@ -160,9 +170,9 @@ function AppShell({ navigationTheme, theme }: AppShellProps): React.JSX.Element 
 /**
  * Renders the root Expo Router layout with global providers and themed navigation.
  */
-export default function RootLayout(): React.JSX.Element {
-  const colorScheme = useColorScheme();
-  const theme = getTheme(colorScheme);
+function RootLayoutContent(): React.JSX.Element {
+  const { themeMode } = useThemePreference();
+  const theme = getTheme(themeMode);
   const navigationTheme = useMemo(
     () =>
       createNavigationTheme(
@@ -183,10 +193,17 @@ export default function RootLayout(): React.JSX.Element {
     ]
   );
 
+  return <AppShell navigationTheme={navigationTheme} theme={theme} />;
+}
+
+/**
+ * Renders the root Expo Router layout with global providers and themed navigation.
+ */
+export default function RootLayout(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <AppProviders>
-        <AppShell navigationTheme={navigationTheme} theme={theme} />
+        <RootLayoutContent />
       </AppProviders>
     </SafeAreaProvider>
   );

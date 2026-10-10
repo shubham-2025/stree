@@ -124,12 +124,23 @@ export default function CartClient() {
 
           {/* Summary */}
           <div className="mt-8 bg-surface-alt rounded-xl p-6 border border-border">
-            <div className="flex justify-between items-center text-lg font-bold">
-              <span>Subtotal</span>
-              <span className="text-brand">{formatPrice(total)}</span>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted">Items subtotal</span>
+              <span className="font-semibold text-foreground">{formatPrice(total)}</span>
+            </div>
+            <div className="mt-2 flex justify-between items-center text-sm">
+              <span className="text-muted">Delivery fee</span>
+              <span className="font-semibold text-foreground">{formatPrice(29)}</span>
             </div>
             <p className="text-xs text-muted mt-1">
-              Shipping: Free · Payment: Cash on Delivery
+              Flat ₹29 delivery fee on every order
+            </p>
+            <div className="mt-3 flex justify-between items-center text-lg font-bold border-t border-border pt-3">
+              <span>Payable total</span>
+              <span className="text-brand">{formatPrice(total + 29)}</span>
+            </div>
+            <p className="text-xs text-muted mt-1">
+              Payment: Cash on Delivery
             </p>
             <Link
               href="/checkout"

@@ -179,11 +179,13 @@ export async function getOptionalMobileRequestContext(request: Request) {
     error,
   } = await client.auth.getUser();
 
+  // Treat invalid/demo tokens as anonymous so COD checkout still works.
   if (error || !user) {
-    throw new MobileAuthError(
-      "Your session is invalid or has expired. Please sign in again.",
-      401
-    );
+    return {
+      accessToken: null,
+      client: createRequestClient(),
+      user: null,
+    };
   }
 
   return {

@@ -5,7 +5,9 @@ import {
   BORDER,
   DARK_BACKGROUND,
   DARK_BORDER,
+  DARK_PRIMARY,
   DARK_SURFACE,
+  DARK_SECONDARY,
   DARK_TEXT,
   DARK_TEXT_LIGHT,
   ERROR,
@@ -45,8 +47,8 @@ export const colors: ThemeColors = {
 };
 
 export const darkColors: ThemeColors = {
-  primary: PRIMARY,
-  secondary: SECONDARY,
+  primary: DARK_PRIMARY,
+  secondary: DARK_SECONDARY,
   background: DARK_BACKGROUND,
   surface: DARK_SURFACE,
   text: DARK_TEXT,

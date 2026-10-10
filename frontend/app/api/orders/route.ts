@@ -28,6 +28,11 @@ type OrderBody = {
   total_amount?: unknown;
 };
 
+type PostgrestErrorLike = {
+  code?: string | null;
+  message?: string | null;
+};
+
 function asTrimmedString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -72,6 +77,14 @@ function sanitizeOrderItems(items: unknown) {
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   return sanitizedItems.length > 0 ? sanitizedItems : null;
+}
+
+function isMissingOrdersUserIdColumn(error: PostgrestErrorLike | null | undefined) {
+  return (
+    error?.code === "PGRST204" &&
+    typeof error.message === "string" &&
+    error.message.includes("'user_id' column")
+  );
 }
 
 export async function POST(request: Request) {
@@ -144,9 +157,8 @@ export async function POST(request: Request) {
 
     const orderId = crypto.randomUUID();
 
-    const { error } = await context.client.from("orders").insert({
+    const orderRecord = {
       id: orderId,
-      user_id: context.user?.id ?? null,
       customer_name: customerName,
       customer_email: customerEmail,
       phone,
@@ -159,7 +171,19 @@ export async function POST(request: Request) {
       items,
       total_amount: totalAmount,
       status: "NEW",
+    };
+
+    let { error } = await context.client.from("orders").insert({
+      ...orderRecord,
+      user_id: context.user?.id ?? null,
     });
+
+    if (isMissingOrdersUserIdColumn(error)) {
+      console.warn(
+        "Orders API insert fallback: 'user_id' column missing, retrying without it."
+      );
+      ({ error } = await context.client.from("orders").insert(orderRecord));
+    }
 
     if (error) {
       console.error("Orders API insert error:", error);
@@ -183,6 +207,7 @@ export async function POST(request: Request) {
         landmark: landmark || undefined,
         items,
         total_amount: totalAmount,
+        delivery_fee: 29,
       });
     } catch (emailError) {
       console.error("Orders API email error:", emailError);

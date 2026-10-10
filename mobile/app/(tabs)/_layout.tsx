@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { TAB_BAR_HEIGHT } from '../../constants/Layout';
+import { useCart } from '../../hooks/useCart';
 import { getTheme } from '../../lib/theme';
 
 type TabRouteName = 'index' | 'products' | 'cart' | 'profile';
@@ -47,6 +48,7 @@ function getTabConfig(routeName: string): TabConfig {
 export default function TabsLayout(): React.JSX.Element {
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme);
+  const { count } = useCart();
   const tabBarShadowStyle =
     Platform.OS === 'web'
       ? ({
@@ -69,6 +71,14 @@ export default function TabsLayout(): React.JSX.Element {
         return {
           headerShown: false,
           tabBarActiveTintColor: theme.colors.primary,
+          tabBarBadge:
+            route.name === 'cart' && count > 0 ? (count > 99 ? '99+' : count) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: theme.colors.primary,
+            color: '#FFFFFF',
+            fontSize: 10,
+            fontWeight: '700',
+          },
           tabBarInactiveTintColor: theme.colors.textMuted,
           tabBarHideOnKeyboard: true,
           tabBarItemStyle: {

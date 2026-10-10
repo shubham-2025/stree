@@ -6,6 +6,7 @@ import {
   MobileAuthError,
   requireMobileRequestContext,
 } from "@/lib/mobile-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,7 @@ function asOptionalTrimmedString(value: unknown) {
 export async function PATCH(request: Request) {
   try {
     const context = await requireMobileRequestContext(request);
+    const adminClient = createAdminClient();
     const body = (await request.json()) as ProfileUpdateBody;
     const nextName = asOptionalTrimmedString(body.name);
     const nextPhone = asOptionalTrimmedString(body.phone);
@@ -56,9 +58,13 @@ export async function PATCH(request: Request) {
       phone: nextPhone ?? "",
       ...(hasDefaultAddress ? { defaultAddress: nextDefaultAddress } : {}),
     });
-    const { data, error } = await context.client.auth.updateUser({
-      data: userMetadata,
-    });
+
+    const { data, error } = await adminClient.auth.admin.updateUserById(
+      context.user.id,
+      {
+        user_metadata: userMetadata,
+      }
+    );
 
     if (error) {
       console.error("Mobile profile update error:", error);

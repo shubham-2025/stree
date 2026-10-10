@@ -1,0 +1,14 @@
+.expo/
+.expo-shared/
+.expo-config.json
+dist/
+web-build/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision

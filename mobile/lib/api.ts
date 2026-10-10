@@ -4,6 +4,8 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 
+import { CATEGORIES } from '../constants/Categories';
+
 import type {
   Address,
   ApiOrder,
@@ -11,6 +13,7 @@ import type {
   ApiResponse,
   ApiUser,
   CartItem,
+  HomeCategoryCard,
   Order,
   OrderItem,
   OrderStatus,
@@ -34,10 +37,72 @@ function resolveBaseApiUrl(): string {
 export const BASE_API_URL = resolveBaseApiUrl();
 const REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_PRODUCT_DESCRIPTION = 'No description available.';
+export const PLACEHOLDER_PRODUCT_IMAGE =
+  'https://stree-sarees-com.vercel.app/placeholder.svg';
+const DEMO_SESSION_TOKEN = 'demo-session-token';
+
+function resolveWebsiteOrigin(): string {
+  try {
+    const apiUrl = new URL(BASE_API_URL);
+    if (isLocalHostname(apiUrl.hostname) || isPrivateIpv4Hostname(apiUrl.hostname)) {
+      return 'https://stree-sarees-com.vercel.app';
+    }
+
+    return apiUrl.origin;
+  } catch {
+    return 'https://stree-sarees-com.vercel.app';
+  }
+}
+
+/**
+ * Turns site-relative media paths into absolute URLs the mobile image loader can fetch.
+ */
+export function resolveMediaUrl(value?: string | null): string {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^(https?:|data:|file:|content:|blob:)/i.test(normalized)) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('//')) {
+    return `https:${normalized}`;
+  }
+
+  if (normalized.startsWith('/')) {
+    return `${resolveWebsiteOrigin()}${normalized}`;
+  }
+
+  return normalized;
+}
 
 export interface SupabasePublicConfig {
   url: string;
   anonKey: string;
+}
+
+export interface MobileOrderSubmissionPayload {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  phone: string;
+  address_line1: string;
+  address_line2?: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string | null;
+  items: OrderItem[];
+  total_amount: number;
+  status: 'NEW';
+}
+
+export interface MobileOrderSubmissionOptions {
+  accessToken?: string | null;
+  userId?: string | null;
 }
 
 interface ProductLike {
@@ -66,6 +131,15 @@ interface ProductLike {
   created_at?: string | null;
   updatedAt?: string | null;
   updated_at?: string | null;
+}
+
+interface CategoryNameLike {
+  name?: string | null;
+}
+
+interface PostgrestErrorLike {
+  code?: string | null;
+  message?: string | null;
 }
 
 interface UserLike {
@@ -213,6 +287,20 @@ function createSupabaseRestHeaders(
   };
 }
 
+function createSupabaseMutationHeaders(
+  config: SupabasePublicConfig,
+  accessToken?: string,
+  prefer?: string
+): AxiosRequestConfig['headers'] {
+  return {
+    Accept: 'application/json',
+    Authorization: `Bearer ${accessToken || config.anonKey}`,
+    apikey: config.anonKey,
+    'Content-Type': 'application/json',
+    ...(prefer ? { Prefer: prefer } : {}),
+  };
+}
+
 function sanitizeSupabaseSearchTerm(value: string): string {
   return value.trim().replace(/[,*()]/g, ' ').replace(/\s+/g, ' ');
 }
@@ -225,6 +313,40 @@ function parseContentRangeTotal(contentRange?: string): number | undefined {
   const totalToken = contentRange.split('/')[1];
   const total = Number(totalToken);
   return Number.isFinite(total) ? total : undefined;
+}
+
+function isLocalHostname(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+
+  return (
+    normalized === 'localhost' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized === '[::1]'
+  );
+}
+
+function isPrivateIpv4Hostname(hostname: string): boolean {
+  const parts = hostname.trim().split('.');
+
+  if (parts.length !== 4) {
+    return false;
+  }
+
+  const octets = parts.map((part) => Number.parseInt(part, 10));
+
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    return false;
+  }
+
+  const [first, second] = octets;
+
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
 }
 
 /**
@@ -250,6 +372,53 @@ export function getSupabasePublicConfig(): SupabasePublicConfig | null {
     url: url.replace(/\/+$/, ''),
     anonKey,
   };
+}
+
+export function shouldPreferDirectSupabaseAccess(): boolean {
+  if (!getSupabasePublicConfig()) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(BASE_API_URL).hostname;
+    return isLocalHostname(hostname) || isPrivateIpv4Hostname(hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function shouldUseDirectSupabaseFallback(error: unknown): boolean {
+  if (!getSupabasePublicConfig()) {
+    return false;
+  }
+
+  if (shouldPreferDirectSupabaseAccess()) {
+    return true;
+  }
+
+  if (error instanceof ApiClientError) {
+    return (
+      typeof error.statusCode !== 'number' ||
+      ![400, 401, 403].includes(error.statusCode)
+    );
+  }
+
+  if (axios.isAxiosError(error)) {
+    return (
+      typeof error.response?.status !== 'number' ||
+      ![400, 401, 403].includes(error.response.status)
+    );
+  }
+
+  return true;
+}
+
+export function shouldPreferSupabaseCatalogReads(): boolean {
+  return shouldPreferDirectSupabaseAccess();
+}
+
+export function shouldUseSupabaseCatalogFallback(error: unknown): boolean {
+  return shouldUseDirectSupabaseFallback(error);
 }
 
 /**
@@ -400,6 +569,286 @@ export async function fetchSupabaseProductById(id: string): Promise<Product | nu
   const product = rows.find(isRecord);
 
   return product ? normalizeProduct(product as ProductLike) : null;
+}
+
+/**
+ * Loads home category cards directly from Supabase so mobile catalogue discovery
+ * still works when the configured API points at an unreachable local server.
+ */
+export async function fetchSupabaseHomeCategories(): Promise<HomeCategoryCard[]> {
+  const config = getSupabasePublicConfig();
+
+  if (!config) {
+    throw new ApiClientError(
+      'Supabase public configuration is missing for home categories.'
+    );
+  }
+
+  const headers = createSupabaseRestHeaders(config);
+  const [managedCategoriesResult, categoryProductsResult] = await Promise.allSettled([
+    axios.get<unknown[]>(
+      `${config.url}/rest/v1/site_categories?select=name&order=name.asc`,
+      {
+        headers,
+        timeout: REQUEST_TIMEOUT_MS,
+      }
+    ),
+    axios.get<unknown[]>(
+      `${config.url}/rest/v1/products?select=category,images,created_at&is_active=eq.true&stock_qty=gt.0&category=not.is.null&order=created_at.desc`,
+      {
+        headers,
+        timeout: REQUEST_TIMEOUT_MS,
+      }
+    ),
+  ]);
+
+  if (categoryProductsResult.status !== 'fulfilled') {
+    const reason = categoryProductsResult.reason;
+    throw axios.isAxiosError(reason)
+      ? createApiClientError(reason)
+      : new ApiClientError(getApiErrorMessage(reason));
+  }
+
+  const counts = new Map<string, number>();
+  const previewImages = new Map<string, string>();
+  const productRows = Array.isArray(categoryProductsResult.value.data)
+    ? categoryProductsResult.value.data
+    : [];
+
+  for (const row of productRows) {
+    if (!isRecord(row)) {
+      continue;
+    }
+
+    const category =
+      typeof row.category === 'string' && row.category.trim().length > 0
+        ? row.category.trim()
+        : null;
+
+    if (!category) {
+      continue;
+    }
+
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+
+    if (!previewImages.has(category)) {
+      previewImages.set(category, resolveImages(row as ProductLike)[0] ?? '');
+    }
+  }
+
+  const managedCategories =
+    managedCategoriesResult.status === 'fulfilled' &&
+    Array.isArray(managedCategoriesResult.value.data)
+      ? managedCategoriesResult.value.data
+          .filter(isRecord)
+          .map((row) => {
+            const name = (row as CategoryNameLike).name;
+            return typeof name === 'string' && name.trim().length > 0
+              ? name.trim()
+              : null;
+          })
+          .filter((name): name is string => Boolean(name))
+      : [];
+
+  const categoryNames = Array.from(
+    new Set([...CATEGORIES, ...managedCategories, ...counts.keys()])
+  );
+
+  return categoryNames.map((name) => ({
+    name,
+    image: previewImages.get(name) ?? '',
+    count: counts.get(name) ?? 0,
+  }));
+}
+
+function isMissingOrdersUserIdColumn(error: PostgrestErrorLike | null | undefined): boolean {
+  return (
+    error?.code === 'PGRST204' &&
+    typeof error.message === 'string' &&
+    error.message.includes("'user_id' column")
+  );
+}
+
+function extractOrderIdFromPayload(
+  payload: unknown,
+  fallbackOrderId: string
+): string {
+  if (!isRecord(payload)) {
+    return fallbackOrderId;
+  }
+
+  if (typeof payload.orderId === 'string' && payload.orderId.trim().length > 0) {
+    return payload.orderId.trim();
+  }
+
+  if (typeof payload.id === 'string' && payload.id.trim().length > 0) {
+    return payload.id.trim();
+  }
+
+  if (isRecord(payload.data)) {
+    return extractOrderIdFromPayload(payload.data, fallbackOrderId);
+  }
+
+  return fallbackOrderId;
+}
+
+async function insertSupabaseOrderRecord(
+  record: MobileOrderSubmissionPayload & { user_id?: string | null },
+  options: MobileOrderSubmissionOptions = {}
+): Promise<void> {
+  const config = getSupabasePublicConfig();
+
+  if (!config) {
+    throw new ApiClientError(
+      'Supabase public configuration is missing for mobile order placement.'
+    );
+  }
+
+  const accessToken = trimEnvValue(options.accessToken ?? undefined);
+
+  try {
+    await axios.post(`${config.url}/rest/v1/orders`, record, {
+      headers: createSupabaseMutationHeaders(
+        config,
+        accessToken || undefined,
+        'return=minimal'
+      ),
+      timeout: REQUEST_TIMEOUT_MS,
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw createApiClientError(error);
+    }
+
+    throw new ApiClientError(getApiErrorMessage(error));
+  }
+}
+
+export async function submitOrderViaSupabase(
+  payload: MobileOrderSubmissionPayload,
+  options: MobileOrderSubmissionOptions = {}
+): Promise<string> {
+  const userId =
+    typeof options.userId === 'string' && options.userId.trim().length > 0
+      ? options.userId.trim()
+      : null;
+
+  try {
+    await insertSupabaseOrderRecord(
+      userId ? { ...payload, user_id: userId } : payload,
+      options
+    );
+    return payload.id;
+  } catch (error) {
+    if (
+      userId &&
+      error instanceof ApiClientError &&
+      isMissingOrdersUserIdColumn(error.details as PostgrestErrorLike | undefined)
+    ) {
+      await insertSupabaseOrderRecord(payload, options);
+      return payload.id;
+    }
+
+    if (
+      options.accessToken &&
+      error instanceof ApiClientError &&
+      typeof error.statusCode === 'number' &&
+      [401, 403].includes(error.statusCode)
+    ) {
+      await insertSupabaseOrderRecord(payload);
+      return payload.id;
+    }
+
+    throw error;
+  }
+}
+
+function resolveOrderAccessToken(token?: string | null): string | undefined {
+  const normalized = typeof token === 'string' ? token.trim() : '';
+
+  if (!normalized || normalized === DEMO_SESSION_TOKEN) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+/**
+ * Resolves a usable product image URL for order payloads.
+ * The backend rejects cart lines without a non-empty image string.
+ */
+export function resolveOrderItemImage(
+  image?: string | null,
+  images?: Array<string | null | undefined> | null
+): string {
+  const primary =
+    typeof image === 'string' && image.trim().length > 0 ? image.trim() : '';
+
+  if (primary) {
+    return primary;
+  }
+
+  const fromGallery = Array.isArray(images)
+    ? images.find(
+        (candidate): candidate is string =>
+          typeof candidate === 'string' && candidate.trim().length > 0
+      )
+    : undefined;
+
+  return fromGallery?.trim() || PLACEHOLDER_PRODUCT_IMAGE;
+}
+
+export async function submitMobileOrder(
+  payload: MobileOrderSubmissionPayload,
+  options: MobileOrderSubmissionOptions = {}
+): Promise<string> {
+  const accessToken = resolveOrderAccessToken(options.accessToken);
+  const sanitizedPayload: MobileOrderSubmissionPayload = {
+    ...payload,
+    items: payload.items.map((item) => ({
+      ...item,
+      image: resolveOrderItemImage(item.image),
+    })),
+  };
+
+  const postOrder = async (token?: string): Promise<string> => {
+    const response = await api.post<unknown>('/orders', sanitizedPayload, {
+      headers: createOptionalAuthHeaders(token),
+      timeout: 30000,
+    });
+    return extractOrderIdFromPayload(response.data, sanitizedPayload.id);
+  };
+
+  try {
+    return await postOrder(accessToken);
+  } catch (error) {
+    if (
+      accessToken &&
+      error instanceof ApiClientError &&
+      error.statusCode === 401
+    ) {
+      try {
+        return await postOrder();
+      } catch (retryError) {
+        error = retryError;
+      }
+    }
+
+    const message = getApiErrorMessage(error).toLowerCase();
+
+    if (
+      message.includes('network error') ||
+      message.includes('timeout') ||
+      message.includes('could not reach') ||
+      message.includes('unable to connect')
+    ) {
+      throw new ApiClientError(
+        'Could not reach the Stree order service. Start the website server or set EXPO_PUBLIC_API_URL to the live site /api so order emails can be sent.'
+      );
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -748,12 +1197,59 @@ export async function deleteRequest<T>(
 /**
  * Loads the signed-in customer profile from the app backend.
  */
-export async function fetchCurrentUser(token?: string): Promise<User | null> {
+export async function fetchCurrentUser(
+  token?: string,
+  config?: AxiosRequestConfig
+): Promise<User | null> {
   const user = await getRequest<ApiUser>('/mobile-auth/me', {
-    headers: createOptionalAuthHeaders(token),
+    ...config,
+    headers: {
+      ...(createOptionalAuthHeaders(token) ?? {}),
+      ...(config?.headers ?? {}),
+    },
   });
 
   return normalizeUser(user);
+}
+
+/**
+ * Loads the same managed home categories used by the web homepage.
+ */
+export async function fetchHomeCategories(): Promise<HomeCategoryCard[]> {
+  const normalizeCategories = (categories: unknown): HomeCategoryCard[] =>
+    Array.isArray(categories)
+      ? categories
+          .filter(
+            (
+              category
+            ): category is HomeCategoryCard =>
+              Boolean(
+                category &&
+                  typeof category.name === 'string' &&
+                  typeof category.image === 'string' &&
+                  typeof category.count === 'number'
+              )
+          )
+          .map((category) => ({
+            ...category,
+            image: resolveMediaUrl(category.image),
+          }))
+      : [];
+
+  if (shouldPreferSupabaseCatalogReads()) {
+    return fetchSupabaseHomeCategories();
+  }
+
+  try {
+    const categories = await getRequest<HomeCategoryCard[]>('/home-categories');
+    return normalizeCategories(categories);
+  } catch (error) {
+    if (shouldUseSupabaseCatalogFallback(error)) {
+      return fetchSupabaseHomeCategories();
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -761,13 +1257,18 @@ export async function fetchCurrentUser(token?: string): Promise<User | null> {
  */
 export async function updateCurrentUserProfile(
   updates: Partial<User>,
-  token?: string
+  token?: string,
+  config?: AxiosRequestConfig
 ): Promise<User | null> {
   const user = await patchRequest<ApiUser, Partial<User>>(
     '/mobile-auth/profile',
     updates,
     {
-      headers: createOptionalAuthHeaders(token),
+      ...config,
+      headers: {
+        ...(createOptionalAuthHeaders(token) ?? {}),
+        ...(config?.headers ?? {}),
+      },
     }
   );
 

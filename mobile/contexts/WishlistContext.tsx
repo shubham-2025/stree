@@ -10,7 +10,14 @@ import React, {
 
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../lib/storage';
 import type { Product } from '../lib/types';
-import { fetchSupabaseProductById, getSupabasePublicConfig } from '../lib/api';
+import {
+  api,
+  fetchSupabaseProductById,
+  getSupabasePublicConfig,
+  normalizeProduct,
+  shouldPreferSupabaseCatalogReads,
+} from '../lib/api';
+import type { ApiProduct } from '../lib/types';
 import { useToast } from './ToastContext';
 
 export interface WishlistContextValue {
@@ -153,6 +160,47 @@ function sanitizeWishlist(value: unknown): PersistedWishlist {
   };
 }
 
+function extractSingleProduct(payload: unknown): ApiProduct | null {
+  if (isRecord(payload) && typeof payload.id === 'string') {
+    return payload as unknown as ApiProduct;
+  }
+
+  if (isRecord(payload) && isRecord(payload.data)) {
+    return extractSingleProduct(payload.data);
+  }
+
+  if (isRecord(payload) && isRecord(payload.product)) {
+    return extractSingleProduct(payload.product);
+  }
+
+  return null;
+}
+
+async function fetchWishlistProductById(productId: string): Promise<Product | null> {
+  if (shouldPreferSupabaseCatalogReads() && getSupabasePublicConfig()) {
+    const direct = await fetchSupabaseProductById(productId).catch(() => null);
+    if (direct) {
+      return direct;
+    }
+  }
+
+  try {
+    const response = await api.get<unknown>(`/products/${productId}`);
+    const extracted = extractSingleProduct(response.data);
+    if (extracted) {
+      return normalizeProduct(extracted);
+    }
+  } catch {
+    // Fall through to Supabase when the app API is unavailable.
+  }
+
+  if (!getSupabasePublicConfig()) {
+    return null;
+  }
+
+  return fetchSupabaseProductById(productId).catch(() => null);
+}
+
 export interface WishlistProviderProps {
   children: ReactNode;
 }
@@ -215,7 +263,7 @@ export function WishlistProvider({
     const existingIds = new Set(items.map((item) => item.id));
     const missingIds = favorites.filter((favoriteId) => !existingIds.has(favoriteId));
 
-    if (missingIds.length === 0 || !getSupabasePublicConfig()) {
+    if (missingIds.length === 0) {
       return;
     }
 
@@ -225,7 +273,7 @@ export function WishlistProvider({
       const recoveredEntries = await Promise.all(
         missingIds.map(async (favoriteId) => ({
           favoriteId,
-          product: await fetchSupabaseProductById(favoriteId).catch(() => null),
+          product: await fetchWishlistProductById(favoriteId),
         }))
       );
 

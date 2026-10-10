@@ -12,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useAuth } from '../../hooks/useAuth';
-import { setStorageItem, STORAGE_KEYS } from '../../lib/storage';
+import { useToast } from '../../contexts/ToastContext';
+import { markAuthIntroSeen } from '../../lib/auth-intro';
 import { getTheme } from '../../lib/theme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -28,12 +29,15 @@ export default function RegisterScreen(): React.JSX.Element {
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme);
   const { error: authError, isLoggedIn, loading, register } = useAuth();
+  const { showToast } = useToast();
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [acceptedTerms, setAcceptedTerms] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const destination = typeof params.returnTo === 'string'
     ? params.returnTo
@@ -63,17 +67,33 @@ export default function RegisterScreen(): React.JSX.Element {
 
     setSubmitting(true);
     setError(null);
+    setVerificationMessage(null);
 
     try {
       await register(name, email, password);
-      await setStorageItem(STORAGE_KEYS.authIntroSeen, true).catch(() => undefined);
+      await markAuthIntroSeen();
+      showToast({
+        title: 'Account created',
+        message: 'You are signed in and ready to shop.',
+        iconName: 'checkmark-circle-outline',
+        tone: 'success',
+        durationMs: 3200,
+      });
       router.replace(destination);
     } catch (registerError) {
-      setError(
+      const message =
         registerError instanceof Error
           ? registerError.message
-          : 'Unable to create your account right now.'
-      );
+          : 'Unable to create your account right now.';
+
+      if (message.toLowerCase().includes('requires email verification')) {
+        setVerificationMessage(
+          `Account created for ${email.trim().toLowerCase()}. Check your email to verify it, then sign in.`
+        );
+        return;
+      }
+
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +126,7 @@ export default function RegisterScreen(): React.JSX.Element {
               Save favourites, track orders, and keep your address ready for effortless checkout.
             </Text>
             <Text className="mt-3 text-[13px] leading-6" style={{ color: theme.colors.textMuted }}>
-              If signup asks for email verification, you can still enter the app immediately from the demo login on the previous screen.
+              Your account is created live through Stree. After signup you can sign in, save your address, and place COD orders.
             </Text>
 
             <Input
@@ -114,6 +134,7 @@ export default function RegisterScreen(): React.JSX.Element {
               label="Name"
               onChangeText={setName}
               placeholder="Your full name"
+              required
               value={name}
             />
 
@@ -125,6 +146,7 @@ export default function RegisterScreen(): React.JSX.Element {
               label="Email"
               onChangeText={setEmail}
               placeholder="you@example.com"
+              required
               value={email}
             />
 
@@ -133,7 +155,22 @@ export default function RegisterScreen(): React.JSX.Element {
               label="Password"
               onChangeText={setPassword}
               placeholder="At least 6 characters"
-              secureTextEntry
+              required
+              rightIcon={
+                <Pressable
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => setShowPassword((current) => !current)}
+                >
+                  <Ionicons
+                    color={theme.colors.textMuted}
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                  />
+                </Pressable>
+              }
+              secureTextEntry={!showPassword}
               value={password}
             />
 
@@ -142,7 +179,22 @@ export default function RegisterScreen(): React.JSX.Element {
               label="Confirm Password"
               onChangeText={setConfirmPassword}
               placeholder="Re-enter your password"
-              secureTextEntry
+              required
+              rightIcon={
+                <Pressable
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => setShowPassword((current) => !current)}
+                >
+                  <Ionicons
+                    color={theme.colors.textMuted}
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                  />
+                </Pressable>
+              }
+              secureTextEntry={!showPassword}
               value={confirmPassword}
             />
 
@@ -169,7 +221,13 @@ export default function RegisterScreen(): React.JSX.Element {
               </Text>
             </Pressable>
 
-            {error || authError ? (
+            {verificationMessage ? (
+              <Text className="mt-4 text-[14px] leading-6" style={{ color: theme.colors.success }}>
+                {verificationMessage}
+              </Text>
+            ) : null}
+
+            {error || (!verificationMessage ? authError : null) ? (
               <Text className="mt-4 text-[14px] leading-6" style={{ color: theme.colors.error }}>
                 {error ?? authError}
               </Text>
@@ -179,8 +237,26 @@ export default function RegisterScreen(): React.JSX.Element {
               className="mt-6"
               loading={submitting || loading}
               onPress={() => void handleRegister()}
-              text="Create Account"
+              text={
+                submitting || loading
+                  ? 'Please wait, creating your account…'
+                  : 'Create Account'
+              }
             />
+
+            {verificationMessage ? (
+              <Button
+                className="mt-3"
+                onPress={() =>
+                  router.push({
+                    pathname: '/auth/login',
+                    params: { email: email.trim().toLowerCase(), returnTo: destination },
+                  })
+                }
+                text="Go to Sign In"
+                variant="outline"
+              />
+            ) : null}
           </Card>
 
           <View className="mt-5 flex-row items-center justify-center gap-2">

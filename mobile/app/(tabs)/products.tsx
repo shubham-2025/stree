@@ -13,8 +13,8 @@ import { PRODUCT_FILTERS } from '../../constants/Categories';
 import { useCart } from '../../hooks/useCart';
 import { useProducts } from '../../hooks/useProducts';
 import { useWishlist } from '../../hooks/useWishlist';
+import { fetchHomeCategories } from '../../lib/api';
 import { getTheme } from '../../lib/theme';
-import type { ProductFilter } from '../../constants/Categories';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -22,13 +22,9 @@ import CategoryChip from '../../components/common/CategoryChip';
 import Header from '../../components/common/Header';
 import SareeGrid from '../../components/common/SareeGrid';
 
-function resolveInitialFilter(categoryParam?: string): ProductFilter {
-  if (!categoryParam) {
-    return 'All';
-  }
-
-  return PRODUCT_FILTERS.includes(categoryParam as ProductFilter)
-    ? (categoryParam as ProductFilter)
+function resolveInitialFilter(categoryParam?: string): string {
+  return typeof categoryParam === 'string' && categoryParam.trim().length > 0
+    ? categoryParam.trim()
     : 'All';
 }
 
@@ -37,14 +33,14 @@ function resolveInitialFilter(categoryParam?: string): ProductFilter {
  */
 export default function ProductsScreen(): React.JSX.Element {
   const params = useLocalSearchParams<{ category?: string }>();
+  const routeCategory = Array.isArray(params.category) ? params.category[0] : params.category;
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme);
   const { count } = useCart();
   const { isFavorite, toggle } = useWishlist();
   const [search, setSearch] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<ProductFilter>(
-    resolveInitialFilter(Array.isArray(params.category) ? params.category[0] : params.category)
-  );
+  const [managedCategories, setManagedCategories] = useState<string[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>(resolveInitialFilter(routeCategory));
   const deferredSearch = useDeferredValue(search);
   const { data, error, hasMore, loadMore, loading, loadingMore, refreshing, refetch, setFilters } =
     useProducts({
@@ -54,12 +50,53 @@ export default function ProductsScreen(): React.JSX.Element {
     });
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadManagedCategories = async (): Promise<void> => {
+      try {
+        const categories = await fetchHomeCategories();
+
+        if (isMounted) {
+          setManagedCategories(categories.map((category) => category.name));
+        }
+      } catch {
+        if (isMounted) {
+          setManagedCategories([]);
+        }
+      }
+    };
+
+    void loadManagedCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setActiveFilter(resolveInitialFilter(routeCategory));
+  }, [routeCategory]);
+
+  useEffect(() => {
     setFilters({
       category:
         activeFilter !== 'All' && activeFilter !== 'Sale' ? activeFilter : undefined,
       search: deferredSearch.trim() || undefined,
     });
   }, [activeFilter, deferredSearch, setFilters]);
+
+  const filterOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...PRODUCT_FILTERS,
+          ...managedCategories,
+          ...data.map((product) => product.category).filter(Boolean),
+          ...(activeFilter !== 'All' && activeFilter !== 'Sale' ? [activeFilter] : []),
+        ])
+      ),
+    [activeFilter, data, managedCategories]
+  );
 
   const displayedProducts = useMemo(
     () =>
@@ -83,7 +120,7 @@ export default function ProductsScreen(): React.JSX.Element {
       />
 
       <View className="flex-row flex-wrap gap-3">
-        {PRODUCT_FILTERS.map((filterLabel) => (
+        {filterOptions.map((filterLabel) => (
           <CategoryChip
             key={filterLabel}
             active={activeFilter === filterLabel}

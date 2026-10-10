@@ -89,6 +89,22 @@ export default function Footer() {
                   <span className="text-brand">›</span> My Favourites
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/privacy-policy"
+                  className="hover:text-white transition-colors inline-flex items-center gap-2"
+                >
+                  <span className="text-brand">›</span> Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/terms"
+                  className="hover:text-white transition-colors inline-flex items-center gap-2"
+                >
+                  <span className="text-brand">›</span> Terms of Service
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -104,7 +120,7 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-brand mt-0.5">✓</span>
-                <span>Free shipping across India</span>
+                <span>Flat ₹29 delivery on every order</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-brand mt-0.5">✓</span>
@@ -157,7 +173,7 @@ export default function Footer() {
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               Secure Checkout
             </span>
-            <span>🚚 Free Delivery</span>
+            <span>🚚 ₹29 Delivery</span>
           </div>
         </div>
       </div>

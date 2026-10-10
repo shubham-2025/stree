@@ -64,6 +64,12 @@ export interface ApiProduct {
   updated_at?: string;
 }
 
+export interface HomeCategoryCard {
+  name: string;
+  image: string;
+  count: number;
+}
+
 export interface CartItem extends Product {
   quantity: number;
 }

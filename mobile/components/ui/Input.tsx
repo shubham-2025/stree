@@ -102,7 +102,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         >
           {label}
           {required ? (
-            <Text style={{ color: theme.colors.error }}>{' *'}</Text>
+            <Text style={{ color: theme.colors.error, fontWeight: '700' }}>{' *'}</Text>
           ) : null}
         </Text>
       ) : null}

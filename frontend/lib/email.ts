@@ -15,6 +15,8 @@ function escapeAttr(s: string): string {
   return s.replace(/"/g, "%22").replace(/'/g, "%27");
 }
 
+const DEFAULT_DELIVERY_FEE = 29;
+
 interface OrderEmailData {
   orderId: string;
   customer_name: string;
@@ -34,6 +36,8 @@ interface OrderEmailData {
     image: string;
   }[];
   total_amount: number;
+  /** Flat delivery fee included in total_amount. Defaults to ₹29. */
+  delivery_fee?: number;
 }
 
 interface ContactEmailData {
@@ -43,8 +47,13 @@ interface ContactEmailData {
   message: string;
 }
 
+interface WelcomeEmailData {
+  name: string;
+  email: string;
+}
+
 export async function sendOrderEmail(data: OrderEmailData) {
-  const transporter = createGmailTransport();
+  const transporter = createSmtpTransport();
   const mailTo = getRequiredEnv("MAIL_TO", ["ORDER_NOTIFICATION_EMAIL"]);
   const fromAddress = getOptionalEnv(["SMTP_FROM"]) || DEFAULT_FROM;
   const placedAt = new Date().toLocaleString("en-IN", {
@@ -53,6 +62,36 @@ export async function sendOrderEmail(data: OrderEmailData) {
     timeStyle: "short",
   });
   const itemCount = data.items.reduce((total, item) => total + item.qty, 0);
+  const itemsSubtotal = data.items.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
+  const deliveryFee =
+    typeof data.delivery_fee === "number" && Number.isFinite(data.delivery_fee)
+      ? data.delivery_fee
+      : DEFAULT_DELIVERY_FEE;
+  const formatInr = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+
+  const amountBreakdownHtml = `
+        <div style="background:#f9fafb;border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Items subtotal</td>
+              <td style="padding:6px 0;text-align:right;color:#111827;font-weight:600;">${formatInr(itemsSubtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Delivery fee</td>
+              <td style="padding:6px 0;text-align:right;color:#111827;font-weight:600;">${formatInr(deliveryFee)}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0 0;border-top:1px solid #e5e7eb;color:#111827;font-weight:700;">Payable total</td>
+              <td style="padding:10px 0 0;border-top:1px solid #e5e7eb;text-align:right;color:#b91c1c;font-weight:800;font-size:16px;">${formatInr(data.total_amount)}</td>
+            </tr>
+          </table>
+          <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">
+            A flat delivery fee of ${formatInr(deliveryFee)} is added to every order.
+          </p>
+        </div>`;
 
   const itemRows = data.items
     .map(
@@ -167,10 +206,12 @@ export async function sendOrderEmail(data: OrderEmailData) {
           </p>
         </div>
 
+        ${amountBreakdownHtml}
+
         <div style="background:#111827;border-radius:8px;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;">
           <table style="width:100%;"><tr>
-            <td style="color:#fff;font-size:18px;font-weight:700;">Total Amount</td>
-            <td style="text-align:right;color:#fca5a5;font-size:22px;font-weight:800;">₹${data.total_amount.toLocaleString("en-IN")}</td>
+            <td style="color:#fff;font-size:18px;font-weight:700;">Total Amount (incl. delivery)</td>
+            <td style="text-align:right;color:#fca5a5;font-size:22px;font-weight:800;">${formatInr(data.total_amount)}</td>
           </tr></table>
         </div>
 
@@ -213,7 +254,9 @@ export async function sendOrderEmail(data: OrderEmailData) {
           ).toLocaleString("en-IN")}`
       ),
       "",
-      `Total Amount: ₹${data.total_amount.toLocaleString("en-IN")}`,
+      `Items subtotal: ${formatInr(itemsSubtotal)}`,
+      `Delivery fee: ${formatInr(deliveryFee)}`,
+      `Payable total: ${formatInr(data.total_amount)}`,
       "Payment Mode: Cash on Delivery",
       "",
       "We will contact you soon for confirmation.",
@@ -253,7 +296,21 @@ export async function sendOrderEmail(data: OrderEmailData) {
                 .join("")}
             </tbody>
           </table>
-          <p style="margin:16px 0 0;font-size:16px;font-weight:700;">Total: ₹${data.total_amount.toLocaleString("en-IN")}</p>
+          <table style="width:100%;margin-top:16px;font-size:14px;border-collapse:collapse;">
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Items subtotal</td>
+              <td style="padding:6px 0;text-align:right;font-weight:600;">${formatInr(itemsSubtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#6b7280;">Delivery fee</td>
+              <td style="padding:6px 0;text-align:right;font-weight:600;">${formatInr(deliveryFee)}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0 0;border-top:1px solid #e5e7eb;font-weight:700;">Payable total</td>
+              <td style="padding:10px 0 0;border-top:1px solid #e5e7eb;text-align:right;font-weight:800;color:#b91c1c;font-size:16px;">${formatInr(data.total_amount)}</td>
+            </tr>
+          </table>
+          <p style="margin:10px 0 0;font-size:12px;color:#6b7280;">A flat delivery fee of ${formatInr(deliveryFee)} is added to every order.</p>
           <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">Payment: Cash on Delivery</p>
           <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">Thanks for purchasing with Stree Sarees.</p>
         </div>
@@ -279,7 +336,75 @@ export async function sendOrderEmail(data: OrderEmailData) {
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : JSON.stringify(error);
-    console.error("[stree] Gmail SMTP order email failed:", message);
+    console.error("[stree] SMTP order email failed:", message);
+    return { ok: false as const, reason: "smtp_failed" as const, error: message };
+  }
+}
+
+export async function sendWelcomeEmail(data: WelcomeEmailData) {
+  const transporter = createSmtpTransport();
+  const fromAddress = getOptionalEnv(["SMTP_FROM"]) || DEFAULT_FROM;
+  const subject = "Welcome to Stree Sarees";
+  const safeName = escapeHtml(data.name.trim() || "Stree Customer");
+  const safeEmail = data.email.trim().toLowerCase();
+
+  const text = [
+    `Hi ${data.name || "Stree Customer"},`,
+    "",
+    "Thanks for creating your Stree Sarees account.",
+    "Your account is now ready for mobile sign-in and order tracking.",
+    "",
+    "What this account helps with:",
+    "- your future orders stay linked to this account",
+    "- you can view your order history inside the app",
+    "- your saved address makes checkout faster next time",
+    "",
+    "If you ever forget your password, you can use the reset password link from the app sign-in screen.",
+    "",
+    "Team Stree Sarees",
+  ].join("\n");
+
+  const html = `
+    <div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;color:#111827;">
+      <div style="background:#7b1e3a;padding:22px 24px;border-radius:12px 12px 0 0;color:#fff;">
+        <h1 style="margin:0;font-size:24px;">Welcome to Stree Sarees</h1>
+        <p style="margin:8px 0 0;font-size:14px;color:#f8d7df;">Your account is ready.</p>
+      </div>
+      <div style="padding:24px;">
+        <p style="margin:0 0 12px;">Hi <strong>${safeName}</strong>,</p>
+        <p style="margin:0 0 16px;">
+          Thank you for registering with Stree Sarees using <strong>${escapeHtml(safeEmail)}</strong>.
+        </p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;">
+          <p style="margin:0 0 10px;font-weight:700;">What your account helps with:</p>
+          <ul style="margin:0;padding-left:18px;color:#374151;line-height:1.8;">
+            <li>Future orders stay linked to your account.</li>
+            <li>You can view your order history in the mobile app.</li>
+            <li>Your saved address makes checkout faster next time.</li>
+          </ul>
+        </div>
+        <p style="margin:16px 0 0;color:#4b5563;line-height:1.7;">
+          You can now sign in on the Stree mobile app and place orders with full account tracking.
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: safeEmail,
+      subject,
+      text,
+      html,
+    });
+
+    console.log("[stree] Welcome email sent:", safeEmail, info.messageId ?? "");
+    return { ok: true as const, id: info.messageId };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : JSON.stringify(error);
+    console.error("[stree] Welcome email failed:", message);
     return { ok: false as const, reason: "smtp_failed" as const, error: message };
   }
 }
@@ -293,13 +418,37 @@ function getRequiredEnv(primary: string, aliases: string[] = []): string {
   return value;
 }
 
-function createGmailTransport() {
-  const smtpHost = getOptionalEnv(["SMTP_HOST", "BREVO_SMTP_HOST"]) || "smtp.gmail.com";
+function createSmtpTransport() {
+  const provider = (getOptionalEnv(["SMTP_PROVIDER"]) || "").toLowerCase();
+  const explicitHost = getOptionalEnv(["SMTP_HOST"]);
+  const gmailUser = getOptionalEnv(["SMTP_USER"]);
+  const gmailPass = getOptionalEnv(["SMTP_PASS"]);
+  const brevoHost = getOptionalEnv(["BREVO_SMTP_HOST"]);
+  const brevoUser = getOptionalEnv(["BREVO_SMTP_USER"]);
+  const brevoPass = getOptionalEnv(["BREVO_SMTP_PASSWORD"]);
+
+  // Use Gmail SMTP_* whenever present, unless SMTP_PROVIDER=brevo.
+  // Expired Brevo credentials were blocking purchase confirmation emails.
+  const preferGmail =
+    provider !== "brevo" && Boolean(gmailUser && gmailPass);
+  const useBrevoCredentials =
+    !preferGmail && Boolean(brevoHost && brevoUser && brevoPass);
+
+  const smtpHost =
+    explicitHost ||
+    (preferGmail ? "smtp.gmail.com" : undefined) ||
+    (useBrevoCredentials ? brevoHost : undefined) ||
+    "smtp.gmail.com";
   const smtpPort = Number(
-    getOptionalEnv(["SMTP_PORT", "BREVO_SMTP_PORT"]) || (smtpHost === "smtp.gmail.com" ? "465" : "587")
+    getOptionalEnv(["SMTP_PORT", "BREVO_SMTP_PORT"]) ||
+      (smtpHost === "smtp.gmail.com" ? "465" : "587")
   );
-  const smtpUser = getRequiredEnv("SMTP_USER", ["BREVO_SMTP_USER"]);
-  const smtpPass = getRequiredEnv("SMTP_PASS", ["BREVO_SMTP_PASSWORD"]);
+  const smtpUser = useBrevoCredentials
+    ? getRequiredEnv("BREVO_SMTP_USER", ["SMTP_USER"])
+    : getRequiredEnv("SMTP_USER", ["BREVO_SMTP_USER"]);
+  const smtpPass = useBrevoCredentials
+    ? getRequiredEnv("BREVO_SMTP_PASSWORD", ["SMTP_PASS"])
+    : getRequiredEnv("SMTP_PASS", ["BREVO_SMTP_PASSWORD"]);
   const secure =
     getOptionalEnv(["SMTP_SECURE"])?.toLowerCase() === "true" ||
     (!getOptionalEnv(["SMTP_SECURE"]) && smtpPort === 465);
@@ -316,7 +465,7 @@ function createGmailTransport() {
 }
 
 export async function sendContactEmail(data: ContactEmailData) {
-  const transporter = createGmailTransport();
+  const transporter = createSmtpTransport();
   const mailTo = getRequiredEnv("MAIL_TO", ["ORDER_NOTIFICATION_EMAIL"]);
   const fromAddress = getOptionalEnv(["SMTP_FROM"]) || DEFAULT_FROM;
 

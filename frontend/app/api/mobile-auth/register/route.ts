@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient, createServerPublicClient } from "@/lib/supabase/admin";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -93,6 +94,15 @@ export async function POST(request: Request) {
       );
     }
 
+    try {
+      await sendWelcomeEmail({
+        name,
+        email,
+      });
+    } catch (welcomeEmailError) {
+      console.error("Mobile register welcome email error:", welcomeEmailError);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -119,4 +129,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

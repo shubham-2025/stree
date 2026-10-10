@@ -79,7 +79,7 @@ function SareeCardComponent({
 
               <View className="absolute left-2 top-2 gap-2">
                 {product.mrp && product.mrp > product.price ? (
-                  <Badge text="Sale" variant="sale" />
+                  <Badge size="md" text="SALE" variant="sale" />
                 ) : null}
               </View>
             </View>

@@ -23,6 +23,7 @@ import {
   setApiAuthToken,
   updateCurrentUserProfile,
 } from '../lib/api';
+import { DEMO_EMAIL, DEMO_PASSWORD, isDemoLoginEnabled } from '../lib/runtime';
 import type { ApiUser, AuthState, User } from '../lib/types';
 
 interface SupabaseAuthConfig {
@@ -51,15 +52,15 @@ export interface AuthContextValue extends AuthState {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   checkToken: () => Promise<boolean>;
   updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-export const DEMO_EMAIL = 'demo@stree.app';
-export const DEMO_PASSWORD = 'Stree123!';
 const DEMO_TOKEN = 'demo-session-token';
+const MOBILE_BACKEND_AUTH_TIMEOUT_MS = 20000;
 const DEMO_USER: User = {
   id: 'demo-user',
   name: 'Stree Demo',
@@ -110,6 +111,18 @@ function isDemoSessionToken(token?: string | null): boolean {
 
 function getAuthErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
+    const axiosCode = typeof error.code === 'string' ? error.code.toUpperCase() : '';
+    const axiosMessage = typeof error.message === 'string' ? error.message.trim() : '';
+
+    if (
+      axiosCode === 'ECONNABORTED' ||
+      axiosCode === 'ECONNREFUSED' ||
+      axiosCode === 'ERR_NETWORK' ||
+      axiosMessage.toLowerCase().includes('timeout')
+    ) {
+      return 'Could not reach Stree right now. Check your internet connection, or confirm EXPO_PUBLIC_API_URL points at the live site or your computer\'s current Wi-Fi IP.';
+    }
+
     const responseMessage =
       typeof error.response?.data === 'object' &&
       error.response?.data !== null &&
@@ -212,11 +225,26 @@ async function requestInstantSignup(
       name,
       email,
       password,
+    },
+    {
+      timeout: MOBILE_BACKEND_AUTH_TIMEOUT_MS,
     }
   );
 
   const payload = response.data as RegisterApiEnvelope & SupabaseAuthResponse;
   return payload.data ?? payload;
+}
+
+async function requestPasswordResetEmail(email: string): Promise<void> {
+  await api.post(
+    '/mobile-auth/forgot-password',
+    {
+      email,
+    },
+    {
+      timeout: MOBILE_BACKEND_AUTH_TIMEOUT_MS,
+    }
+  );
 }
 
 async function requestCurrentUser(
@@ -228,6 +256,25 @@ async function requestCurrentUser(
   });
 
   return response.data;
+}
+
+async function loadCurrentUserWithFallback(
+  token: string,
+  config: SupabaseAuthConfig | null,
+  fallbackUser: User | null
+): Promise<User | null> {
+  try {
+    return await fetchCurrentAppUser(token, {
+      timeout: MOBILE_BACKEND_AUTH_TIMEOUT_MS,
+    });
+  } catch {
+    if (!config) {
+      return fallbackUser;
+    }
+
+    const apiUser = await requestCurrentUser(config, token);
+    return normalizeUser(apiUser) ?? fallbackUser;
+  }
 }
 
 async function requestSessionRefresh(
@@ -304,14 +351,14 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       const nextRefreshToken =
         typeof session.refresh_token === 'string' ? session.refresh_token : null;
       const fallbackUser = normalizeUser(session.user ?? null);
+      const config = getSupabaseAuthConfig();
 
       if (!token) {
         throw createAuthError('Authentication response was incomplete. Please try again.');
       }
 
       setApiAuthToken(token);
-      const user =
-        (await fetchCurrentAppUser(token).catch(() => fallbackUser)) ?? fallbackUser;
+      const user = (await loadCurrentUserWithFallback(token, config, fallbackUser)) ?? fallbackUser;
 
       if (!user) {
         throw createAuthError('Authentication response was incomplete. Please try again.');
@@ -370,14 +417,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
 
     try {
       const user =
-        (await fetchCurrentAppUser(activeToken).catch(async () => {
-          if (!config) {
-            return safeUser;
-          }
-
-          const apiUser = await requestCurrentUser(config, activeToken);
-          return normalizeUser(apiUser);
-        })) ?? safeUser;
+        (await loadCurrentUserWithFallback(activeToken, config, safeUser)) ?? safeUser;
 
       if (!user) {
         throw createAuthError('Unable to load your account details.');
@@ -476,6 +516,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       const config = getSupabaseAuthConfig();
 
       if (
+        isDemoLoginEnabled &&
         normalizedEmail === DEMO_EMAIL &&
         normalizedPassword === DEMO_PASSWORD
       ) {
@@ -581,7 +622,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
               ? 'Registration succeeded, but your account requires email verification before signing in.'
               : serverRegistrationMessage ??
                 'Registration succeeded, but your account requires email verification before signing in.';
-          setError(message);
+          setError(null);
           throw createAuthError(message);
         }
 
@@ -599,6 +640,32 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     },
     [persistSession]
   );
+
+  const requestPasswordReset = useCallback(async (email: string): Promise<void> => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      const message = 'Email is required.';
+      setError(message);
+      throw createAuthError(message);
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await requestPasswordResetEmail(normalizedEmail);
+    } catch (resetError) {
+      const message = getAuthErrorMessage(
+        resetError,
+        'Unable to send reset email right now.'
+      );
+      setError(message);
+      throw createAuthError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const logout = useCallback(async (): Promise<void> => {
     const config = getSupabaseAuthConfig();
@@ -647,7 +714,9 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         return;
       }
 
-      const nextUser = await updateCurrentUserProfile(updates, activeToken);
+      const nextUser = await updateCurrentUserProfile(updates, activeToken, {
+        timeout: MOBILE_BACKEND_AUTH_TIMEOUT_MS,
+      });
 
       if (!nextUser) {
         throw createAuthError('Unable to save your profile right now.');
@@ -679,6 +748,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       error,
       login,
       register,
+      requestPasswordReset,
       logout,
       checkToken,
       updateUser,
@@ -694,6 +764,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       login,
       logout,
       register,
+      requestPasswordReset,
       updateUser,
     ]
   );

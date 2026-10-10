@@ -4,21 +4,23 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   Switch,
   Text,
   View,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { fetchMyOrders } from '../../lib/api';
+import { fetchMyOrders, getApiErrorMessage } from '../../lib/api';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../../lib/storage';
+import { DEFAULT_PREFERENCES, normalizePreferences, type AppPreferences } from '../../lib/preferences';
 import { getTheme } from '../../lib/theme';
 import type { Address, Order } from '../../lib/types';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
+import { useThemePreference } from '../../hooks/useThemePreference';
 import { useToast } from '../../hooks/useToast';
 import { useWishlist } from '../../hooks/useWishlist';
 import Button from '../../components/ui/Button';
@@ -31,10 +33,6 @@ import BrandLoader from '../../components/common/BrandLoader';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import { formatPrice } from '../../components/common/PriceTag';
 
-interface ProfilePreferences {
-  notificationsEnabled: boolean;
-}
-
 interface ProfileFormState {
   name: string;
   email: string;
@@ -45,10 +43,6 @@ interface ProfileFormState {
   state: string;
   pincode: string;
 }
-
-const DEFAULT_PREFERENCES: ProfilePreferences = {
-  notificationsEnabled: true,
-};
 
 function getStatusVariant(status: Order['status']): 'primary' | 'secondary' | 'success' | 'outline' {
   switch (status) {
@@ -75,6 +69,21 @@ function formatOrderDate(date: string): string {
   }).format(new Date(date));
 }
 
+function formatAddressBlock(address: Address): string {
+  const lines = [
+    address.line1,
+    address.line2,
+    [address.city, address.state].filter(Boolean).join(', '),
+    address.pincode,
+  ].filter(Boolean);
+
+  return lines.join('\n');
+}
+
+function formatOrderStatus(status: Order['status']): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function createProfileFormState(
   name = '',
   email = '',
@@ -96,7 +105,7 @@ function createProfileFormState(
 function mergeOrders(primaryOrders: Order[], secondaryOrders: Order[]): Order[] {
   return Array.from(
     new Map(
-      [...primaryOrders, ...secondaryOrders].map((order) => [order.id, order])
+      [...secondaryOrders, ...primaryOrders].map((order) => [order.id, order])
     ).values()
   );
 }
@@ -128,15 +137,16 @@ function buildDefaultAddress(formState: ProfileFormState): Address | undefined {
  */
 export default function ProfileScreen(): React.JSX.Element {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = getTheme(colorScheme);
+  const { setThemeMode, themeMode } = useThemePreference();
+  const theme = getTheme(themeMode);
   const { count } = useCart();
   const { showToast } = useToast();
   const { count: wishlistCount } = useWishlist();
   const { error, initialized, isLoggedIn, loading, logout, token, updateUser, user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [preferences, setPreferences] = useState<ProfilePreferences>(DEFAULT_PREFERENCES);
+  const [preferences, setPreferences] = useState<AppPreferences>(DEFAULT_PREFERENCES);
   const [editVisible, setEditVisible] = useState<boolean>(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
   const [profileForm, setProfileForm] = useState<ProfileFormState>(
     createProfileFormState()
@@ -154,7 +164,7 @@ export default function ProfileScreen(): React.JSX.Element {
     try {
       const [storedOrders, storedPreferences] = await Promise.all([
         getStorageItem<Order[]>(STORAGE_KEYS.orderHistory),
-        getStorageItem<ProfilePreferences>(STORAGE_KEYS.preferences),
+        getStorageItem<unknown>(STORAGE_KEYS.preferences),
       ]);
 
       const normalizedOrders = Array.isArray(storedOrders)
@@ -169,7 +179,7 @@ export default function ProfileScreen(): React.JSX.Element {
           : [];
 
       setOrders(mergeOrders(serverOrders, normalizedOrders));
-      setPreferences(storedPreferences ?? DEFAULT_PREFERENCES);
+      setPreferences(normalizePreferences(storedPreferences));
     } catch {
       setOrders([]);
       setPreferences(DEFAULT_PREFERENCES);
@@ -195,11 +205,33 @@ export default function ProfileScreen(): React.JSX.Element {
   }, [user]);
 
   const persistPreferences = useCallback(
-    async (nextPreferences: ProfilePreferences): Promise<void> => {
+    async (nextPreferences: AppPreferences): Promise<void> => {
       setPreferences(nextPreferences);
       await setStorageItem(STORAGE_KEYS.preferences, nextPreferences).catch(() => undefined);
     },
     []
+  );
+
+  const handleThemeModeChange = useCallback(
+    async (enabled: boolean): Promise<void> => {
+      const nextThemeMode = enabled ? 'dark' : 'light';
+      const nextPreferences: AppPreferences = {
+        ...preferences,
+        themeMode: nextThemeMode,
+      };
+
+      setPreferences(nextPreferences);
+      await setThemeMode(nextThemeMode);
+      showToast({
+        title: enabled ? 'Dark mode enabled' : 'Light mode enabled',
+        message: enabled
+          ? 'Your Stree app now uses a darker palette for low-light browsing.'
+          : 'Stree is back to the default light theme.',
+        iconName: enabled ? 'moon-outline' : 'sunny-outline',
+        tone: 'primary',
+      });
+    },
+    [preferences, setThemeMode, showToast]
   );
 
   const handleSaveProfile = useCallback(async (): Promise<void> => {
@@ -227,6 +259,11 @@ export default function ProfileScreen(): React.JSX.Element {
         iconName: 'sparkles-outline',
         tone: 'success',
       });
+    } catch (saveError) {
+      Alert.alert(
+        'Profile',
+        getApiErrorMessage(saveError, 'Unable to save your profile right now.')
+      );
     } finally {
       setSavingProfile(false);
     }
@@ -342,41 +379,62 @@ export default function ProfileScreen(): React.JSX.Element {
               </Card>
             ) : (
               sortedOrders.map((order) => (
-                <Card key={order.id} className="rounded-[22px]">
-                  <View className="flex-row items-start justify-between gap-4">
-                    <View className="flex-1">
-                      <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
-                        Order #{order.id.slice(0, 8).toUpperCase()}
+                <Pressable
+                  key={order.id}
+                  accessibilityRole="button"
+                  onPress={() => setSelectedOrder(order)}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.96 : 1,
+                  })}
+                >
+                  <Card className="rounded-[22px]">
+                    <View className="flex-row items-start justify-between gap-4">
+                      <View className="flex-1">
+                        <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
+                          Order #{order.id.slice(0, 8).toUpperCase()}
+                        </Text>
+                        <Text className="mt-1 text-[13px]" style={{ color: theme.colors.textMuted }}>
+                          {formatOrderDate(order.date)}
+                        </Text>
+                      </View>
+
+                      <Badge
+                        text={formatOrderStatus(order.status)}
+                        variant={getStatusVariant(order.status)}
+                      />
+                    </View>
+
+                    <View className="mt-4 flex-row items-center justify-between">
+                      <Text className="text-[14px]" style={{ color: theme.colors.textMuted }}>
+                        {order.items.length} item{order.items.length === 1 ? '' : 's'}
                       </Text>
-                      <Text className="mt-1 text-[13px]" style={{ color: theme.colors.textMuted }}>
-                        {formatOrderDate(order.date)}
+                      <Text className="text-[16px] font-semibold" style={{ color: theme.colors.primary }}>
+                        {formatPrice(order.total)}
                       </Text>
                     </View>
 
-                    <Badge
-                      text={order.status}
-                      variant={getStatusVariant(order.status)}
-                    />
-                  </View>
-
-                  <View className="mt-4 flex-row items-center justify-between">
-                    <Text className="text-[14px]" style={{ color: theme.colors.textMuted }}>
-                      {order.items.length} item{order.items.length === 1 ? '' : 's'}
+                    <Text className="mt-4 text-[13px] font-semibold" style={{ color: theme.colors.primary }}>
+                      View order details
                     </Text>
-                    <Text className="text-[16px] font-semibold" style={{ color: theme.colors.primary }}>
-                      {formatPrice(order.total)}
-                    </Text>
-                  </View>
-                </Card>
+                  </Card>
+                </Pressable>
               ))
             )}
           </View>
         </View>
 
         <View className="mt-6">
-          <Text className="text-[22px] font-semibold" style={{ color: theme.colors.text }}>
-            Address Book
-          </Text>
+          <View className="flex-row items-center justify-between gap-4">
+            <Text className="text-[22px] font-semibold" style={{ color: theme.colors.text }}>
+              Address Book
+            </Text>
+            <Button
+              fullWidth={false}
+              onPress={() => setEditVisible(true)}
+              text={user.defaultAddress ? 'Edit Address' : 'Add Address'}
+              variant="outline"
+            />
+          </View>
 
           <Card className="mt-4 rounded-[22px]">
             {user.defaultAddress ? (
@@ -419,7 +477,10 @@ export default function ProfileScreen(): React.JSX.Element {
 
               <Switch
                 onValueChange={(value) =>
-                  void persistPreferences({ notificationsEnabled: value })
+                  void persistPreferences({
+                    ...preferences,
+                    notificationsEnabled: value,
+                  })
                 }
                 thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
                 trackColor={{
@@ -427,6 +488,29 @@ export default function ProfileScreen(): React.JSX.Element {
                   true: theme.colors.primary,
                 }}
                 value={preferences.notificationsEnabled}
+              />
+            </View>
+          </Card>
+
+          <Card className="mt-4 rounded-[22px]">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
+                  Dark Mode
+                </Text>
+                <Text className="mt-1 text-[14px] leading-6" style={{ color: theme.colors.textMuted }}>
+                  Stree stays light by default. Turn this on only when you want the darker look.
+                </Text>
+              </View>
+
+              <Switch
+                onValueChange={(value) => void handleThemeModeChange(value)}
+                thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.primary,
+                }}
+                value={preferences.themeMode === 'dark'}
               />
             </View>
           </Card>
@@ -461,6 +545,116 @@ export default function ProfileScreen(): React.JSX.Element {
         animationType="slide"
         presentationStyle="pageSheet"
         transparent={false}
+        visible={Boolean(selectedOrder)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+          <Header
+            showBackButton
+            showCartButton={false}
+            subtitle="Orders"
+            title="Order Details"
+            onPressBack={() => setSelectedOrder(null)}
+          />
+
+          {selectedOrder ? (
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Card className="rounded-[24px]">
+                <View className="flex-row items-start justify-between gap-4">
+                  <View className="flex-1">
+                    <Text className="text-[18px] font-semibold" style={{ color: theme.colors.text }}>
+                      Order #{selectedOrder.id.slice(0, 8).toUpperCase()}
+                    </Text>
+                    <Text className="mt-2 text-[14px]" style={{ color: theme.colors.textMuted }}>
+                      Placed on {formatOrderDate(selectedOrder.date)}
+                    </Text>
+                  </View>
+
+                  <Badge
+                    text={formatOrderStatus(selectedOrder.status)}
+                    variant={getStatusVariant(selectedOrder.status)}
+                  />
+                </View>
+              </Card>
+
+              <Card className="rounded-[24px]">
+                <Text className="text-[16px] font-semibold" style={{ color: theme.colors.text }}>
+                  Items in this order
+                </Text>
+
+                <View className="mt-4 gap-4">
+                  {selectedOrder.items.map((item) => (
+                    <View
+                      key={`${selectedOrder.id}-${item.id}`}
+                      className="flex-row items-start justify-between gap-4 border-b pb-4"
+                      style={{ borderColor: theme.colors.border }}
+                    >
+                      <View className="flex-1">
+                        <Text className="text-[15px] font-semibold" style={{ color: theme.colors.text }}>
+                          {item.name}
+                        </Text>
+                        <Text className="mt-1 text-[13px]" style={{ color: theme.colors.textMuted }}>
+                          Qty {item.quantity} | {item.category}
+                        </Text>
+                      </View>
+                      <Text className="text-[15px] font-semibold" style={{ color: theme.colors.primary }}>
+                        {formatPrice(item.price * item.quantity)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+
+              <Card className="rounded-[24px]">
+                <Text className="text-[16px] font-semibold" style={{ color: theme.colors.text }}>
+                  Delivery address
+                </Text>
+                <Text className="mt-4 text-[15px] font-semibold" style={{ color: theme.colors.text }}>
+                  {selectedOrder.address.name}
+                </Text>
+                <Text className="mt-1 text-[14px]" style={{ color: theme.colors.textMuted }}>
+                  {selectedOrder.address.phone}
+                </Text>
+                <Text className="mt-2 text-[14px] leading-6" style={{ color: theme.colors.textMuted }}>
+                  {formatAddressBlock(selectedOrder.address)}
+                </Text>
+              </Card>
+
+              <Card className="rounded-[24px]">
+                <Text className="text-[16px] font-semibold" style={{ color: theme.colors.text }}>
+                  Payment & total
+                </Text>
+                <View className="mt-4 gap-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[14px]" style={{ color: theme.colors.textMuted }}>
+                      Payment method
+                    </Text>
+                    <Text className="text-[14px] font-semibold" style={{ color: theme.colors.text }}>
+                      Cash on Delivery
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[14px]" style={{ color: theme.colors.textMuted }}>
+                      Order total
+                    </Text>
+                    <Text className="text-[20px] font-bold" style={{ color: theme.colors.primary }}>
+                      {formatPrice(selectedOrder.total)}
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+            </ScrollView>
+          ) : null}
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        presentationStyle="pageSheet"
+        transparent={false}
         visible={editVisible}
       >
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -488,6 +682,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, name: value }))
                   }
                   placeholder="Your name"
+                  required
                   value={profileForm.name}
                 />
 
@@ -495,6 +690,7 @@ export default function ProfileScreen(): React.JSX.Element {
                   containerClassName="mt-4"
                   editable={false}
                   label="Email"
+                  required
                   value={profileForm.email}
                 />
 
@@ -506,6 +702,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, phone: value }))
                   }
                   placeholder="10-digit mobile number"
+                  required
                   value={profileForm.phone}
                 />
               </Card>
@@ -522,6 +719,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, line1: value }))
                   }
                   placeholder="House no., street, area"
+                  required
                   value={profileForm.line1}
                 />
 
@@ -542,6 +740,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, city: value }))
                   }
                   placeholder="City"
+                  required
                   value={profileForm.city}
                 />
 
@@ -552,6 +751,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, state: value }))
                   }
                   placeholder="State"
+                  required
                   value={profileForm.state}
                 />
 
@@ -563,6 +763,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     setProfileForm((current) => ({ ...current, pincode: value }))
                   }
                   placeholder="6-digit pincode"
+                  required
                   value={profileForm.pincode}
                 />
               </Card>
@@ -570,7 +771,11 @@ export default function ProfileScreen(): React.JSX.Element {
               <Button
                 loading={savingProfile}
                 onPress={() => void handleSaveProfile()}
-                text="Save Changes"
+                text={
+                  savingProfile
+                    ? 'Please wait, saving your details…'
+                    : 'Save Changes'
+                }
               />
             </ScrollView>
           </KeyboardAvoidingView>

@@ -113,6 +113,7 @@ export async function createOrder(data: CheckoutData): Promise<CreateOrderResult
         image: i.image,
       })),
       total_amount: data.total_amount,
+      delivery_fee: 29,
     });
 
     console.log("Email result:", emailResult);
