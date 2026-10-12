@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
+import AppDownloadBand from "@/components/AppDownloadBand";
 import HomeCarouselCell from "./HomeCarouselCell";
 import HomeCatalogSections from "./HomeCatalogSections";
 
@@ -105,6 +106,8 @@ export default function HomePage() {
       <Suspense fallback={<CatalogSkeleton />}>
         <HomeCatalogSections />
       </Suspense>
+
+      <AppDownloadBand />
 
       <section className="relative overflow-hidden bg-[#f9f9f9] py-10 sm:py-20">
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

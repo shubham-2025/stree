@@ -24,14 +24,38 @@ const CART_KEY = "stree_cart";
 const EMPTY_CART: CartItem[] = [];
 const cartListeners = new Set<() => void>();
 
-function loadCart(): CartItem[] {
+let cachedRaw: string | null = null;
+let cachedCart: CartItem[] = EMPTY_CART;
+
+function readCartSnapshot(): CartItem[] {
   if (typeof window === "undefined") return EMPTY_CART;
+
   try {
     const raw = localStorage.getItem(CART_KEY);
-    if (!raw) return EMPTY_CART;
+    if (!raw) {
+      cachedRaw = null;
+      cachedCart = EMPTY_CART;
+      return EMPTY_CART;
+    }
+
+    // useSyncExternalStore requires a stable reference when data is unchanged.
+    if (raw === cachedRaw) {
+      return cachedCart;
+    }
+
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY_CART;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      cachedRaw = raw;
+      cachedCart = EMPTY_CART;
+      return EMPTY_CART;
+    }
+
+    cachedRaw = raw;
+    cachedCart = parsed;
+    return cachedCart;
   } catch {
+    cachedRaw = null;
+    cachedCart = EMPTY_CART;
     return EMPTY_CART;
   }
 }
@@ -42,7 +66,10 @@ function getServerCartSnapshot(): CartItem[] {
 
 function saveCart(items: CartItem[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CART_KEY, JSON.stringify(items));
+  const raw = JSON.stringify(items);
+  localStorage.setItem(CART_KEY, raw);
+  cachedRaw = raw;
+  cachedCart = items.length > 0 ? items : EMPTY_CART;
   cartListeners.forEach((listener) => listener());
 }
 
@@ -50,7 +77,8 @@ function subscribe(listener: () => void) {
   cartListeners.add(listener);
 
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === CART_KEY) {
+    if (event.key === CART_KEY || event.key === null) {
+      cachedRaw = null;
       listener();
     }
   };
@@ -64,10 +92,14 @@ function subscribe(listener: () => void) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const items = useSyncExternalStore(subscribe, loadCart, getServerCartSnapshot);
+  const items = useSyncExternalStore(
+    subscribe,
+    readCartSnapshot,
+    getServerCartSnapshot
+  );
 
   const addToCart = useCallback((item: CartItem) => {
-    const currentItems = loadCart();
+    const currentItems = readCartSnapshot();
     const idx = currentItems.findIndex(
       (i) => i.productId === item.productId && i.color === item.color
     );
@@ -84,7 +116,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = useCallback((productId: string, color: string) => {
     saveCart(
-      loadCart().filter(
+      readCartSnapshot().filter(
         (item) => !(item.productId === productId && item.color === color)
       )
     );
@@ -94,7 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     (productId: string, color: string, qty: number) => {
       if (qty < 1) return;
       saveCart(
-        loadCart().map((item) =>
+        readCartSnapshot().map((item) =>
           item.productId === productId && item.color === color
             ? { ...item, qty }
             : item
@@ -122,4 +154,3 @@ export function useCart() {
   if (!ctx) throw new Error("useCart must be used within CartProvider");
   return ctx;
 }
-

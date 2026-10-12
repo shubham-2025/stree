@@ -105,6 +105,16 @@ export default function Footer() {
                   <span className="text-brand">›</span> Terms of Service
                 </Link>
               </li>
+              <li>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.streesarees.mobile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors inline-flex items-center gap-2"
+                >
+                  <span className="text-brand">›</span> Get the Android app
+                </a>
+              </li>
             </ul>
           </div>
 

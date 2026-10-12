@@ -9,7 +9,7 @@ import {
 } from "react";
 
 interface FavouritesContextType {
-  favourites: string[]; // array of product IDs
+  favourites: string[];
   toggleFavourite: (productId: string) => void;
   isFavourite: (productId: string) => boolean;
   count: number;
@@ -23,14 +23,37 @@ const FAV_KEY = "stree_favourites";
 const EMPTY_FAVS: string[] = [];
 const favouritesListeners = new Set<() => void>();
 
-function loadFavs(): string[] {
+let cachedRaw: string | null = null;
+let cachedFavs: string[] = EMPTY_FAVS;
+
+function readFavsSnapshot(): string[] {
   if (typeof window === "undefined") return EMPTY_FAVS;
+
   try {
     const raw = localStorage.getItem(FAV_KEY);
-    if (!raw) return EMPTY_FAVS;
+    if (!raw) {
+      cachedRaw = null;
+      cachedFavs = EMPTY_FAVS;
+      return EMPTY_FAVS;
+    }
+
+    if (raw === cachedRaw) {
+      return cachedFavs;
+    }
+
     const parsed = JSON.parse(raw) as string[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY_FAVS;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      cachedRaw = raw;
+      cachedFavs = EMPTY_FAVS;
+      return EMPTY_FAVS;
+    }
+
+    cachedRaw = raw;
+    cachedFavs = parsed;
+    return cachedFavs;
   } catch {
+    cachedRaw = null;
+    cachedFavs = EMPTY_FAVS;
     return EMPTY_FAVS;
   }
 }
@@ -41,7 +64,10 @@ function getServerFavsSnapshot(): string[] {
 
 function saveFavs(ids: string[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(FAV_KEY, JSON.stringify(ids));
+  const raw = JSON.stringify(ids);
+  localStorage.setItem(FAV_KEY, raw);
+  cachedRaw = raw;
+  cachedFavs = ids.length > 0 ? ids : EMPTY_FAVS;
   favouritesListeners.forEach((listener) => listener());
 }
 
@@ -49,7 +75,8 @@ function subscribe(listener: () => void) {
   favouritesListeners.add(listener);
 
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === FAV_KEY) {
+    if (event.key === FAV_KEY || event.key === null) {
+      cachedRaw = null;
       listener();
     }
   };
@@ -65,12 +92,12 @@ function subscribe(listener: () => void) {
 export function FavouritesProvider({ children }: { children: ReactNode }) {
   const favourites = useSyncExternalStore(
     subscribe,
-    loadFavs,
+    readFavsSnapshot,
     getServerFavsSnapshot
   );
 
   const toggleFavourite = useCallback((productId: string) => {
-    const currentFavourites = loadFavs();
+    const currentFavourites = readFavsSnapshot();
     saveFavs(
       currentFavourites.includes(productId)
         ? currentFavourites.filter((id) => id !== productId)
@@ -85,7 +112,12 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
   return (
     <FavouritesContext.Provider
-      value={{ favourites, toggleFavourite, isFavourite, count: favourites.length }}
+      value={{
+        favourites,
+        toggleFavourite,
+        isFavourite,
+        count: favourites.length,
+      }}
     >
       {children}
     </FavouritesContext.Provider>
@@ -98,4 +130,3 @@ export function useFavourites() {
     throw new Error("useFavourites must be used within FavouritesProvider");
   return ctx;
 }
-
